@@ -5,11 +5,7 @@ import jwt from 'jsonwebtoken'; // Using ES module syntax for jsonwebtoken
 import db from './setupDb.js';
 
 const app = express();
-const port = process.env.PORT || 3000;
-app.listen(port, () => {
-    console.log(`Server is running on port ${port}`);
-});
-
+const port = 3000; // The port where the app will listen
 app.use(express.json());  
 //---------------------------API CHANGES--------------------------------/
 
