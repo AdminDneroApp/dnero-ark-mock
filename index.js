@@ -135,14 +135,15 @@ app.post('/DneroArk/user/contacts', checkAccessToken, (req, res) => {
 
 
 //Returns the balance of a user's crypto and cash balance from their wallet
-app.get('/DneroArk/user/balance', checkAccessToken, (req, res) => {
-  const userId = req.params.userId;
+app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
+  const userId = req.params.userId; // Correctly access the 'id' parameter
+  console.log("userId: " + userId);
 
   // Check if userId is missing or invalid (400 Bad Request)
   if (!userId) {
     return res.status(400).json({
       event: "INVALID_REQUEST",
-      message: "The authorization token is required."
+      message: "Invalid or missing id"
     });
   }
 
