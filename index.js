@@ -945,7 +945,8 @@ app.get('/DneroArk/coins/pending/count', checkAccessToken, (req, res) => {
         if (createdCoins.length > 0) {
             return res.status(201).json({
                 event: "THROW_SUCCESS",
-                message: "Coin successfully thrown."
+                message: "Coin successfully thrown.",
+                data: createdCoins
             });
         } else {
             return res.status(400).json({
