@@ -872,7 +872,7 @@ app.get('/DneroArk/coins/pending/count', checkAccessToken, (req, res) => {
         }
 
         // Function to create a coin and insert it into the database
-        const createCoin = (userId, senderUserImg, userImgUrl) => {
+        const createCoin = (userId, senderUserImg, userImgUrl, firstName, lastName) => {
             const coinId = Math.floor(Math.random() * 900) + 100; // Simulating a new coinId
             const creationDate = new Date().toISOString();
 
@@ -880,9 +880,9 @@ app.get('/DneroArk/coins/pending/count', checkAccessToken, (req, res) => {
                 INSERT INTO coins (coinId, coinStatus, latitude, longitude, message, cashAmount, creationDate, expirationDate, redeemedDate, userSender, userRecipient)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `;
-            
+
             return new Promise((resolve, reject) => {
-                db.run(insertQuery, [coinId, 1, latitude, longitude, message, cashAmount, creationDate, expirationDate, null, JSON.stringify({ userId: req.user, userImgUrl: senderUserImg }), JSON.stringify({ userId, userImgUrl })], function(err) {
+                db.run(insertQuery, [coinId, 1, latitude, longitude, message, cashAmount, creationDate, expirationDate, null, JSON.stringify({ userId: req.user, userImgUrl: senderUserImg }), JSON.stringify({ userId, userImgUrl, firstName, lastName })], function(err) {
                     if (err) reject(err);
                     resolve({
                         coinId,
@@ -895,7 +895,7 @@ app.get('/DneroArk/coins/pending/count', checkAccessToken, (req, res) => {
                         expirationDate,
                         redeemedDate: null,
                         userSender: { userId: req.user, userImgUrl: senderUserImg },
-                        userRecipient: { userId, userImgUrl }
+                        userRecipient: { userId, userImgUrl, firstName, lastName }
                     });
                 });
             });
@@ -907,7 +907,7 @@ app.get('/DneroArk/coins/pending/count', checkAccessToken, (req, res) => {
         if (Array.isArray(userRecipientId)) {
             for (const userId of userRecipientId) {
                 const user = await new Promise((resolve, reject) => {
-                    const userQuery = `SELECT * FROM users WHERE userId = ?`;
+                    const userQuery = `SELECT userId, firstName, lastName, imgUrl FROM users WHERE userId = ?`;
                     db.get(userQuery, [userId], (err, row) => {
                         if (err) reject(err);
                         else resolve(row);
@@ -915,8 +915,7 @@ app.get('/DneroArk/coins/pending/count', checkAccessToken, (req, res) => {
                 });
 
                 if (user) {
-                    const coin = await createCoin(user.userId, sender.imgUrl, user.imgUrl);
-                    console.log(coin);
+                    const coin = await createCoin(user.userId, sender.imgUrl, user.imgUrl, user.firstName, user.lastName);
                     createdCoins.push(coin);
                 }
             }
@@ -926,7 +925,7 @@ app.get('/DneroArk/coins/pending/count', checkAccessToken, (req, res) => {
         if (Array.isArray(userRecipientPhone)) {
             for (const phone of userRecipientPhone) {
                 const user = await new Promise((resolve, reject) => {
-                    const userQuery = `SELECT * FROM users WHERE deviceInfo LIKE ?`;
+                    const userQuery = `SELECT userId, firstName, lastName, imgUrl FROM users WHERE deviceInfo LIKE ?`;
                     db.get(userQuery, [`%${phone}%`], (err, row) => {
                         if (err) reject(err);
                         else resolve(row);
@@ -934,8 +933,7 @@ app.get('/DneroArk/coins/pending/count', checkAccessToken, (req, res) => {
                 });
 
                 if (user) {
-                    const coin = await createCoin(user.userId, sender.imgUrl, user.imgUrl);
-                    console.log(coin);
+                    const coin = await createCoin(user.userId, sender.imgUrl, user.imgUrl, user.firstName, user.lastName);
                     createdCoins.push(coin);
                 }
             }
