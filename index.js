@@ -245,7 +245,7 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
     const pageInt = page ? parseInt(page, 10) : null;
     const reverse = reverseOrder === 'true';
   
-    // Check if the statuses are valid (must be an array of numbers)
+    // Validate the statuses parameter
     if (statuses && statusArray.some(isNaN)) {
       return res.status(400).json({
         event: "INVALID_STATUSES",
@@ -253,7 +253,7 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
       });
     }
   
-    // Check if pagination parameters are missing or invalid
+    // Validate pagination parameters
     if ((pageSizeInt && !pageInt) || (!pageSizeInt && pageInt)) {
       return res.status(400).json({
         event: "MISSING_PAGINATION",
@@ -276,13 +276,13 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
     }
   
     // Construct the base SQL query for retrieving transactions
-    let query = `SELECT * FROM transactions WHERE user->>'userId' = ?`; // Adjust query to match your DB structure
-    let queryParams = [req.user]; // Add user ID to the parameters for the query
+    let query = `SELECT * FROM transactions WHERE user->>'userId' = ?`;
+    let queryParams = [req.user];
   
-    // Filter by status if statuses were provided
+    // Filter by status if provided
     if (statusArray.length > 0) {
-      query += ' AND coinStatus IN (' + statusArray.map(() => '?').join(', ') + ')';
-      queryParams.push(...statusArray); // Add the statuses to the query parameters
+      query += ' AND transactionStatus IN (' + statusArray.map(() => '?').join(', ') + ')';
+      queryParams.push(...statusArray);
     }
   
     // Apply pagination if provided
@@ -293,8 +293,8 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
       queryParams.push(pageSizeInt, offset);
     }
   
-    // Execute the query to fetch the filtered transactions
-    db.all(query + limitOffsetClause, queryParams, (err, rows) => {
+    // Execute the query to fetch transactions
+    db.all(query + limitOffsetClause, queryParams, async (err, rows) => {
       if (err) {
         console.error("Error querying transactions:", err);
         return res.status(500).json({
@@ -303,7 +303,7 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
         });
       }
   
-      // Handle empty rows (no transactions found)
+      // Handle empty rows
       if (rows.length === 0) {
         return res.status(404).json({
           event: "TRANSACTIONS_NOT_FOUND",
@@ -311,35 +311,53 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
         });
       }
   
-      // Parse JSON user field if necessary
       try {
-        rows = rows.map(row => {
-          if (row.user) {
-            row.user = JSON.parse(row.user); // Assuming the 'user' field is stringified JSON
-          }
-          return row;
-        });
+        // Process rows to include user details with imgUrl
+        rows = await Promise.all(
+          rows.map(async (row) => {
+            if (row.user) {
+              row.user = JSON.parse(row.user); // Parse the 'user' field if it is JSON
   
-        // Reverse order if specified
+              // Fetch the imgUrl for the user from the users table
+              const user = await new Promise((resolve, reject) => {
+                const query = `SELECT firstName, lastName, imgUrl FROM users WHERE userId = ?`;
+                db.get(query, [row.user.userId], (err, userDetails) => {
+                  if (err) reject(err);
+                  else resolve(userDetails);
+                });
+              });
+  
+              if (user) {
+                row.user.firstName = user.firstName;
+                row.user.lastName = user.lastName;
+                row.user.imgUrl = user.imgUrl; // Add imgUrl from users table
+              }
+            }
+  
+            return row;
+          })
+        );
+  
+        // Reverse the order if specified
         if (reverse) {
           rows.reverse();
         }
   
-        // Prepare response
-        let response = {
+        // Prepare the response
+        const response = {
           transactions: rows,
         };
   
-        // Add pagination details to the response if pagination parameters were provided
+        // Add pagination details if applicable
         if (pageSizeInt && pageInt) {
           response.page = pageInt;
           response.pageSize = pageSizeInt;
-          response.totalTransactions = rows.length; // This might need to be adjusted to reflect the total count in DB
+          response.totalTransactions = rows.length; // Adjust to reflect the total count in DB if available
         }
   
         res.status(200).json(response);
-      } catch (parseErr) {
-        console.error("Error processing transaction data:", parseErr);
+      } catch (error) {
+        console.error("Error processing transactions:", error);
         res.status(500).json({
           event: "INTERNAL_SERVER_ERROR",
           message: "An unexpected error occurred while processing the transactions. Please try again later."
@@ -347,7 +365,6 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
       }
     });
   });
-  
   
 
   //----------------------- Coins ----------------------------//
@@ -420,11 +437,11 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
             if (row.userRecipient) row.userRecipient = JSON.parse(row.userRecipient);
             if (row.userSender) row.userSender = JSON.parse(row.userSender);
   
-            // Add firstName and lastName for verbose response
+            // Add firstName, lastName, and imgUrl for verbose response
             if (additionalInfo) {
               if (row.userRecipient && row.userRecipient.userId) {
                 const recipient = await new Promise((resolve, reject) => {
-                  const query = `SELECT firstName, lastName FROM users WHERE userId = ?`;
+                  const query = `SELECT firstName, lastName, imgUrl FROM users WHERE userId = ?`;
                   db.get(query, [row.userRecipient.userId], (err, user) => {
                     if (err) reject(err);
                     else resolve(user);
@@ -433,12 +450,13 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
                 if (recipient) {
                   row.userRecipient.firstName = recipient.firstName;
                   row.userRecipient.lastName = recipient.lastName;
+                  row.userRecipient.userImgUrl = recipient.imgUrl; // Use imgUrl from users
                 }
               }
   
               if (row.userSender && row.userSender.userId) {
                 const sender = await new Promise((resolve, reject) => {
-                  const query = `SELECT firstName, lastName FROM users WHERE userId = ?`;
+                  const query = `SELECT firstName, lastName, imgUrl FROM users WHERE userId = ?`;
                   db.get(query, [row.userSender.userId], (err, user) => {
                     if (err) reject(err);
                     else resolve(user);
@@ -447,6 +465,7 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
                 if (sender) {
                   row.userSender.firstName = sender.firstName;
                   row.userSender.lastName = sender.lastName;
+                  row.userSender.userImgUrl = sender.imgUrl; // Use imgUrl from users
                 }
               }
             }
@@ -466,6 +485,23 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
                 coinStatus: coin.coinStatus,
                 latitude: coin.latitude,
                 longitude: coin.longitude,
+                message: coin.message,
+                cashAmount: coin.cashAmount,
+                creationDate: coin.creationDate,
+                expirationDate: coin.expirationDate,
+                redeemedDate: coin.redeemedDate,
+                userSender: {
+                  userId: coin.userSender.userId,
+                  userImgUrl: coin.userSender.userImgUrl,
+                  firstName: coin.userSender.firstName,
+                  lastName: coin.userSender.lastName,
+                },
+                userRecipient: {
+                  userId: coin.userRecipient.userId,
+                  userImgUrl: coin.userRecipient.userImgUrl,
+                  firstName: coin.userRecipient.firstName,
+                  lastName: coin.userRecipient.lastName,
+                },
               };
             }
           }),
@@ -488,6 +524,7 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
       }
     });
   });
+  
    
   
 
