@@ -281,8 +281,8 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
   
     // Filter by status if provided
     if (statusArray.length > 0) {
-      query += ' AND transactionStatus IN (' + statusArray.map(() => '?').join(', ') + ')';
-      queryParams.push(...statusArray);
+      query += ' AND coinStatus IN (' + statusArray.map(() => '?').join(', ') + ')';
+      queryParams.push(...statusArray); // Add the statuses to the query parameters
     }
   
     // Apply pagination if provided
