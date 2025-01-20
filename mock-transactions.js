@@ -8,7 +8,7 @@ export const transactions = [
       capturedDate: null,
       createDate: "2024-11-20T10:00:00Z",
       user: {
-        userId: 874569,
+        userId: "cdcc5a57-6927-4736-99de-b1c78fba0e23",
         userName: "pchaidez",
         userImgUrl: "https://example.com/images/alice_johnson.jpg"
       }
@@ -22,7 +22,7 @@ export const transactions = [
         capturedDate: null,
         createDate: "2024-11-20T10:00:00Z",
         user: {
-          userId: 874569,
+          userId: "cdcc5a57-6927-4736-99de-b1c78fba0e23",
           userName: "pchaidez",
           userImgUrl: "https://example.com/images/alice_johnson.jpg"
         }
@@ -36,7 +36,7 @@ export const transactions = [
         capturedDate: null,
         createDate: "2024-11-20T10:00:00Z",
         user: {
-          userId: 123456789,
+          userId: "cdcc5a57-6927-4736-99de-b1c78fba0e23",
           userName: "pchaidez",
           userImgUrl: "https://example.com/images/alice_johnson.jpg"
         }
@@ -50,7 +50,7 @@ export const transactions = [
         capturedDate: null,
         createDate: "2024-11-20T10:00:00Z",
         user: {
-          userId: 123456789,
+          userId: "cdcc5a57-6927-4736-99de-b1c78fba0e23",
           userName: "pchaidez",
           userImgUrl: "https://example.com/images/alice_johnson.jpg"
         }
@@ -64,7 +64,7 @@ export const transactions = [
         capturedDate: null,
         createDate: "2024-11-20T10:00:00Z",
         user: {
-          userId: 123456789,
+          userId: "cdcc5a57-6927-4736-99de-b1c78fba0e23",
           userName: "pchaidez",
           userImgUrl: "https://example.com/images/alice_johnson.jpg"
         }
@@ -78,7 +78,7 @@ export const transactions = [
         capturedDate: null,
         createDate: "2024-11-20T10:00:00Z",
         user: {
-          userId: 123456789,
+          userId: "cdcc5a57-6927-4736-99de-b1c78fba0e23",
           userName: "pchaidez",
           userImgUrl: "https://example.com/images/alice_johnson.jpg"
         }
@@ -92,7 +92,7 @@ export const transactions = [
         capturedDate: null,
         createDate: "2024-11-20T10:00:00Z",
         user: {
-          userId: 123456789,
+          userId: "cdcc5a57-6927-4736-99de-b1c78fba0e23",
           userName: "pchaidez",
           userImgUrl: "https://example.com/images/alice_johnson.jpg"
         }
@@ -106,7 +106,7 @@ export const transactions = [
         capturedDate: null,
         createDate: "2024-11-20T10:00:00Z",
         user: {
-          userId: 123456789,
+          userId: "cdcc5a57-6927-4736-99de-b1c78fba0e23",
           userName: "pchaidez",
           userImgUrl: "https://example.com/images/alice_johnson.jpg"
         }
@@ -120,7 +120,7 @@ export const transactions = [
         capturedDate: null,
         createDate: "2024-11-20T10:00:00Z",
         user: {
-          userId: 856325,
+          userId: "cdcc5a57-6927-4736-99de-b1c78fba0e23",
           userName: "pchaidez",
           userImgUrl: "https://example.com/images/alice_johnson.jpg"
         }
@@ -134,7 +134,7 @@ export const transactions = [
         capturedDate: null,
         createDate: "2024-11-20T10:00:00Z",
         user: {
-          userId: 856325,
+          userId: "cdcc5a57-6927-4736-99de-b1c78fba0e23",
           userName: "pchaidez",
           userImgUrl: "https://example.com/images/alice_johnson.jpg"
         }
@@ -148,7 +148,7 @@ export const transactions = [
         capturedDate: null,
         createDate: "2024-11-20T10:00:00Z",
         user: {
-          userId: 856325,
+          userId: "cdcc5a57-6927-4736-99de-b1c78fba0e23",
           userName: "pchaidez",
           userImgUrl: "https://example.com/images/alice_johnson.jpg"
         }
@@ -162,7 +162,7 @@ export const transactions = [
         capturedDate: null,
         createDate: "2024-11-20T10:00:00Z",
         user: {
-          userId: 856325,
+          userId: "cdcc5a57-6927-4736-99de-b1c78fba0e23",
           userName: "pchaidez",
           userImgUrl: "https://example.com/images/alice_johnson.jpg"
         }
@@ -176,7 +176,7 @@ export const transactions = [
         capturedDate: null,
         createDate: "2024-11-20T10:00:00Z",
         user: {
-          userId: 856325,
+          userId: "cdcc5a57-6927-4736-99de-b1c78fba0e23",
           userName: "pchaidez",
           userImgUrl: "https://example.com/images/alice_johnson.jpg"
         }
@@ -190,7 +190,7 @@ export const transactions = [
         capturedDate: null,
         createDate: "2024-11-20T10:00:00Z",
         user: {
-          userId: 874569,
+          userId: "cdcc5a57-6927-4736-99de-b1c78fba0e23",
           userName: "pchaidez",
           userImgUrl: "https://example.com/images/alice_johnson.jpg"
         }
@@ -204,7 +204,7 @@ export const transactions = [
         capturedDate: null,
         createDate: "2024-11-20T10:00:00Z",
         user: {
-          userId: 856325,
+          userId: "cdcc5a57-6927-4736-99de-b1c78fba0e23",
           userName: "pchaidez",
           userImgUrl: "https://example.com/images/alice_johnson.jpg"
         }
@@ -218,7 +218,7 @@ export const transactions = [
         capturedDate: null,
         createDate: "2024-11-20T10:00:00Z",
         user: {
-          userId: 85236,
+          userId: "cdcc5a57-6927-4736-99de-b1c78fba0e23",
           userName: "pchaidez",
           userImgUrl: "https://example.com/images/alice_johnson.jpg"
         }
