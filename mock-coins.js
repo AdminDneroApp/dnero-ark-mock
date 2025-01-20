@@ -15,7 +15,7 @@ export const coinsDb = [
     userImgUrl: "https://example.com/images/alice_johnson.jpg"
     },
     userRecipient: {
-    userId: "c0e49c4e-b247-4b83-bfad-24caec0ad162",
+    userId: "796200b5-2061-4fd2-8b7b-7d8a200ad38d",
     userName: "ronney",
     userImgUrl: "https://example.com/images/bob_williams.jpg"
     }
@@ -36,7 +36,7 @@ export const coinsDb = [
     userImgUrl: "https://example.com/images/alice_johnson.jpg"
     },
     userRecipient: {
-    userId: "444bdd4c-e687-4f87-8ace-bb8c7f9211be",
+    userId: "dd3427fe-4117-4c74-b4ba-57f526236d6d",
     userName: "steven",
     userImgUrl: "https://example.com/images/bob_williams.jpg"
     }
@@ -78,7 +78,7 @@ export const coinsDb = [
     userImgUrl: "https://example.com/images/alice_johnson.jpg"
     },
     userRecipient: {
-    userId: "444bdd4c-e687-4f87-8ace-bb8c7f9211be",
+    userId: "dd3427fe-4117-4c74-b4ba-57f526236d6d",
     userName: "steven",
     userImgUrl: "https://example.com/images/bob_williams.jpg"
     }
@@ -94,12 +94,12 @@ export const coinsDb = [
     expirationDate: "2024-12-01T00:00:00Z",
     redeemedDate: null,
     userSender: {
-    userId: "9810f84c-4be0-46c2-b982-f02c44b93e4b",
+    userId: "dd3427fe-4117-4c74-b4ba-57f526236d6d",
     userName: "dmunoz",
     userImgUrl: "https://example.com/images/alice_johnson.jpg"
     },
     userRecipient: {
-      userId: "444bdd4c-e687-4f87-8ace-bb8c7f9211be",
+      userId: "dd3427fe-4117-4c74-b4ba-57f526236d6d",
       userName: "steven",
     userImgUrl: "https://example.com/images/bob_williams.jpg"
     }
@@ -120,7 +120,7 @@ export const coinsDb = [
     userImgUrl: "https://example.com/images/alice_johnson.jpg"
     },
     userRecipient: {
-      userId: "444bdd4c-e687-4f87-8ace-bb8c7f9211be",
+      userId: "dd3427fe-4117-4c74-b4ba-57f526236d6d",
       userName: "steven",
     userImgUrl: "https://example.com/images/bob_williams.jpg"
     }
@@ -141,7 +141,7 @@ export const coinsDb = [
     userImgUrl: "https://example.com/images/alice_johnson.jpg"
     },
     userRecipient: {
-      userId: "c0e49c4e-b247-4b83-bfad-24caec0ad162",
+      userId: "796200b5-2061-4fd2-8b7b-7d8a200ad38d",
       userName: "ronney",
     userImgUrl: "https://example.com/images/bob_williams.jpg"
     }
@@ -157,7 +157,7 @@ export const coinsDb = [
     expirationDate: "2024-12-01T00:00:00Z",
     redeemedDate: null,
     userSender: {
-    userId: "444bdd4c-e687-4f87-8ace-bb8c7f9211be",
+    userId: "dd3427fe-4117-4c74-b4ba-57f526236d6d",
     userName: "steven",
     userImgUrl: "https://example.com/images/alice_johnson.jpg"
     },
@@ -178,7 +178,7 @@ export const coinsDb = [
     expirationDate: "2024-12-01T00:00:00Z",
     redeemedDate: null,
     userSender: {
-    userId: "444bdd4c-e687-4f87-8ace-bb8c7f9211be",
+    userId: "dd3427fe-4117-4c74-b4ba-57f526236d6d",
     userName: "steven",
     userImgUrl: "https://example.com/images/alice_johnson.jpg"
     },
@@ -199,12 +199,12 @@ export const coinsDb = [
     expirationDate: "2024-12-01T00:00:00Z",
     redeemedDate: null,
     userSender: {
-    userId: "444bdd4c-e687-4f87-8ace-bb8c7f9211be",
+    userId: "dd3427fe-4117-4c74-b4ba-57f526236d6d",
     userName: "steven",
     userImgUrl: "https://example.com/images/alice_johnson.jpg"
     },
     userRecipient: {
-    userId: "c0e49c4e-b247-4b83-bfad-24caec0ad162",
+    userId: "796200b5-2061-4fd2-8b7b-7d8a200ad38d",
     userName: "ronney",
     userImgUrl: "https://example.com/images/bob_williams.jpg"
     }
@@ -220,12 +220,12 @@ export const coinsDb = [
     expirationDate: "2024-12-01T00:00:00Z",
     redeemedDate: null,
     userSender: {
-    userId: "444bdd4c-e687-4f87-8ace-bb8c7f9211be",
+    userId: "dd3427fe-4117-4c74-b4ba-57f526236d6d",
     userName: "steven",
     userImgUrl: "https://example.com/images/alice_johnson.jpg"
     },
     userRecipient: {
-      userId: "c0e49c4e-b247-4b83-bfad-24caec0ad162",
+      userId: "796200b5-2061-4fd2-8b7b-7d8a200ad38d",
       userName: "ronney",
     userImgUrl: "https://example.com/images/bob_williams.jpg"
     }
@@ -241,7 +241,7 @@ export const coinsDb = [
     expirationDate: "2024-12-01T00:00:00Z",
     redeemedDate: null,
     userSender: {
-    userId: "c0e49c4e-b247-4b83-bfad-24caec0ad162",
+    userId: "796200b5-2061-4fd2-8b7b-7d8a200ad38d",
     userName: "ronney",
     userImgUrl: "https://example.com/images/alice_johnson.jpg"
     },
@@ -262,7 +262,7 @@ export const coinsDb = [
     expirationDate: "2024-12-01T00:00:00Z",
     redeemedDate: null,
     userSender: {
-    userId: "c0e49c4e-b247-4b83-bfad-24caec0ad162",
+    userId: "796200b5-2061-4fd2-8b7b-7d8a200ad38d",
     userName: "ronney",
     userImgUrl: "https://example.com/images/alice_johnson.jpg"
     },
@@ -283,7 +283,7 @@ export const coinsDb = [
     expirationDate: "2024-12-01T00:00:00Z",
     redeemedDate: null,
     userSender: {
-    userId: "c0e49c4e-b247-4b83-bfad-24caec0ad162",
+    userId: "796200b5-2061-4fd2-8b7b-7d8a200ad38d",
     userName: "ronney",
     userImgUrl: "https://example.com/images/alice_johnson.jpg"
     },
@@ -304,7 +304,7 @@ export const coinsDb = [
     expirationDate: "2024-12-01T00:00:00Z",
     redeemedDate: null,
     userSender: {
-    userId: "c0e49c4e-b247-4b83-bfad-24caec0ad162",
+    userId: "796200b5-2061-4fd2-8b7b-7d8a200ad38d",
     userName: "ronney",
     userImgUrl: "https://example.com/images/alice_johnson.jpg"
     },

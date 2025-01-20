@@ -524,9 +524,7 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
       }
     });
   });
-  
    
-  
 
   // gets all pending coins for a given user
   app.get('/DneroArk/coins/pending', checkAccessToken, (req, res) => {
