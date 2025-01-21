@@ -449,8 +449,7 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
                 });
                 if (recipient) {
                   row.userRecipient.firstName = recipient.firstName;
-                  row.userRecipient.lastName = recipient.lastName;
-                  row.userRecipient.userImgUrl = recipient.imgUrl; // Use imgUrl from users
+                  row.userRecipient.lastName = recipient.lastName; // Use imgUrl from users
                 }
               }
   
