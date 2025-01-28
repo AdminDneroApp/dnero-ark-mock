@@ -830,12 +830,35 @@ app.get('/DneroArk/coins/pending/count', checkAccessToken, (req, res) => {
             });
           }
   
-          return res.status(200).json(updatedCoin);
+          // Fetch sender and recipient names
+          const userDetailsQuery = `SELECT userId, firstName, lastName FROM users WHERE userId IN (?, ?)`;
+  
+          db.all(userDetailsQuery, [senderId, receiverId], (err, users) => {
+            if (err) {
+              console.error("Error fetching user details:", err);
+              return res.status(500).json({
+                event: "INTERNAL_SERVER_ERROR",
+                message: "An unexpected error occurred. Please try again later.",
+              });
+            }
+  
+            users.forEach((user) => {
+              if (user.userId === senderId) {
+                updatedCoin.userSender.firstName = user.firstName;
+                updatedCoin.userSender.lastName = user.lastName;
+              }
+              if (user.userId === receiverId) {
+                updatedCoin.userRecipient.firstName = user.firstName;
+                updatedCoin.userRecipient.lastName = user.lastName;
+              }
+            });
+  
+            return res.status(200).json(updatedCoin);
+          });
         });
       });
     });
   });
-  
   
 
    // drops a new coin for a given user based on their userId or phone number
