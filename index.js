@@ -896,138 +896,140 @@ app.get('/DneroArk/coins/pending/count', checkAccessToken, (req, res) => {
    // drops a new coin for a given user based on their userId or phone number
    app.post('/DneroArk/coins/Drop', checkAccessToken, async (req, res) => {
     const { latitude, longitude, message, cashAmount, expirationDate, userRecipientId, userRecipientPhone } = req.body;
-
-    // Validate input
+  
     if (!latitude || !longitude || !cashAmount || !expirationDate) {
-        return res.status(400).json({
-            event: "INVALID_PARAMETERS",
-            message: "One or more required parameters are missing or invalid."
-        });
+      return res.status(400).json({
+        event: "INVALID_PARAMETERS",
+        message: "One or more required parameters are missing or invalid.",
+      });
     }
-
+  
     try {
-        // Get sender details from the database using req.user
-        const sender = await new Promise((resolve, reject) => {
-            const senderQuery = `SELECT * FROM users WHERE userId = ?`;
-            db.get(senderQuery, [req.user], (err, row) => {
-                if (err) reject(err);
-                else resolve(row);
-            });
+      // Get sender details
+      const sender = await new Promise((resolve, reject) => {
+        const senderQuery = `SELECT * FROM users WHERE userId = ?`;
+        db.get(senderQuery, [req.user], (err, row) => {
+          if (err) reject(err);
+          else resolve(row);
         });
-
-        if (!sender) {
-            return res.status(404).json({
-                event: "USER_NOT_AUTHORIZED",
-                message: "You do not have permission to drop this coin."
-            });
-        }
-
-        // Check if a coin is already dropped in the same place
-        const existingCoin = await new Promise((resolve, reject) => {
-            const checkCoinQuery = `SELECT * FROM coins WHERE latitude = ? AND longitude = ? AND coinStatus = 1`;
-            db.get(checkCoinQuery, [latitude, longitude], (err, row) => {
-                if (err) reject(err);
-                else resolve(row);
-            });
+      });
+  
+      if (!sender) {
+        return res.status(404).json({
+          event: "USER_NOT_AUTHORIZED",
+          message: "You do not have permission to drop this coin.",
         });
-
-        if (existingCoin) {
-            return res.status(400).json({
-                event: "COIN_ALREADY_DROPPED",
-                message: "This coin has already been dropped."
+      }
+  
+      // Combine and deduplicate recipients
+      const recipientIds = new Set();
+  
+      if (Array.isArray(userRecipientId)) {
+        userRecipientId.forEach((id) => recipientIds.add(id));
+      }
+  
+      if (Array.isArray(userRecipientPhone)) {
+        for (const phone of userRecipientPhone) {
+          const user = await new Promise((resolve, reject) => {
+            const userQuery = `SELECT userId FROM users WHERE deviceInfo LIKE ?`;
+            db.get(userQuery, [`%${phone}%`], (err, row) => {
+              if (err) reject(err);
+              else if (row) resolve(row.userId);
+              else resolve(null);
             });
+          });
+  
+          if (user) recipientIds.add(user);
         }
-
-        // Function to create a coin and insert it into the database
-        const createCoin = (userId, senderUserImg, userImgUrl, firstName, lastName) => {
-            const coinId = Math.floor(Math.random() * 900) + 100; // Simulating a new coinId
-            const creationDate = new Date().toISOString();
-
-            const insertQuery = `
+      }
+  
+      // Create coins for unique recipients
+      const createdCoins = [];
+      for (const userId of recipientIds) {
+        const user = await new Promise((resolve, reject) => {
+          const userQuery = `SELECT userId, firstName, lastName, imgUrl FROM users WHERE userId = ?`;
+          db.get(userQuery, [userId], (err, row) => {
+            if (err) reject(err);
+            else resolve(row);
+          });
+        });
+  
+        if (user) {
+          const existingCoin = await new Promise((resolve, reject) => {
+            const checkCoinQuery = `SELECT * FROM coins WHERE latitude = ? AND longitude = ? AND userRecipient LIKE ?`;
+            db.get(checkCoinQuery, [latitude, longitude, `%${userId}%`], (err, row) => {
+              if (err) reject(err);
+              else resolve(row);
+            });
+          });
+  
+          if (!existingCoin) {
+            const coin = await new Promise((resolve, reject) => {
+              const insertQuery = `
                 INSERT INTO coins (coinId, coinStatus, latitude, longitude, message, cashAmount, creationDate, expirationDate, redeemedDate, userSender, userRecipient)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `;
-
-            return new Promise((resolve, reject) => {
-                db.run(insertQuery, [coinId, 1, latitude, longitude, message, cashAmount, creationDate, expirationDate, null, JSON.stringify({ userId: req.user, userImgUrl: senderUserImg }), JSON.stringify({ userId, userImgUrl, firstName, lastName })], function(err) {
-                    if (err) reject(err);
-                    resolve({
-                        coinId,
-                        coinStatus: 1,
-                        latitude,
-                        longitude,
-                        message,
-                        cashAmount,
-                        creationDate,
-                        expirationDate,
-                        redeemedDate: null,
-                        userSender: { userId: req.user, userImgUrl: senderUserImg },
-                        userRecipient: { userId, userImgUrl, firstName, lastName }
-                    });
-                });
-            });
-        };
-
-        const createdCoins = [];
-
-        // Create coins for userRecipientId list
-        if (Array.isArray(userRecipientId)) {
-            for (const userId of userRecipientId) {
-                const user = await new Promise((resolve, reject) => {
-                    const userQuery = `SELECT userId, firstName, lastName, imgUrl FROM users WHERE userId = ?`;
-                    db.get(userQuery, [userId], (err, row) => {
-                        if (err) reject(err);
-                        else resolve(row);
-                    });
-                });
-
-                if (user) {
-                    const coin = await createCoin(user.userId, sender.imgUrl, user.imgUrl, user.firstName, user.lastName);
-                    createdCoins.push(coin);
+              `;
+              const coinId = Math.floor(Math.random() * 900) + 100; // Simulating a new coinId
+              const creationDate = new Date().toISOString();
+              db.run(
+                insertQuery,
+                [
+                  coinId,
+                  1,
+                  latitude,
+                  longitude,
+                  message,
+                  cashAmount,
+                  creationDate,
+                  expirationDate,
+                  null,
+                  JSON.stringify({ userId: req.user, userImgUrl: sender.imgUrl }),
+                  JSON.stringify({ userId: user.userId, userImgUrl: user.imgUrl, firstName: user.firstName, lastName: user.lastName }),
+                ],
+                function (err) {
+                  if (err) reject(err);
+                  resolve({
+                    coinId,
+                    coinStatus: 1,
+                    latitude,
+                    longitude,
+                    message,
+                    cashAmount,
+                    creationDate,
+                    expirationDate,
+                    redeemedDate: null,
+                    userSender: { userId: req.user, userImgUrl: sender.imgUrl },
+                    userRecipient: { userId: user.userId, userImgUrl: user.imgUrl, firstName: user.firstName, lastName: user.lastName },
+                  });
                 }
-            }
-        }
-
-        // Create coins for userRecipientPhone list
-        if (Array.isArray(userRecipientPhone)) {
-            for (const phone of userRecipientPhone) {
-                const user = await new Promise((resolve, reject) => {
-                    const userQuery = `SELECT userId, firstName, lastName, imgUrl FROM users WHERE deviceInfo LIKE ?`;
-                    db.get(userQuery, [`%${phone}%`], (err, row) => {
-                        if (err) reject(err);
-                        else resolve(row);
-                    });
-                });
-
-                if (user) {
-                    const coin = await createCoin(user.userId, sender.imgUrl, user.imgUrl, user.firstName, user.lastName);
-                    createdCoins.push(coin);
-                }
-            }
-        }
-
-        // After all coins are created, return the response
-        if (createdCoins.length > 0) {
-            return res.status(201).json({
-                event: "THROW_SUCCESS",
-                message: "Coin successfully thrown.",
-                data: createdCoins
+              );
             });
-        } else {
-            return res.status(400).json({
-                event: "INVALID_PARAMETERS",
-                message: "No valid users found for the provided IDs or phone numbers."
-            });
+            createdCoins.push(coin);
+          }
         }
-
-    } catch (err) {
-        console.error('Error:', err);
-        return res.status(500).json({
-            event: "INTERNAL_SERVER_ERROR",
-            message: "An unexpected error occurred. Please try again later."
+      }
+  
+      if (createdCoins.length > 0) {
+        return res.status(201).json({
+          event: "THROW_SUCCESS",
+          message: "Coin successfully thrown.",
+          data: createdCoins,
         });
+      } else {
+        return res.status(400).json({
+          event: "INVALID_PARAMETERS",
+          message: "No valid users found or coins already exist at this location.",
+        });
+      }
+    } catch (err) {
+      console.error("Error:", err);
+      return res.status(500).json({
+        event: "INTERNAL_SERVER_ERROR",
+        message: "An unexpected error occurred. Please try again later.",
+      });
     }
-});
+  });
+  
 
 
 //-----------------------------------User Balance -------------------------/
