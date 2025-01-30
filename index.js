@@ -374,11 +374,21 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
     const { statuses, pageSize, page, sortOrder, verbose } = req.query;
   
     // Validate and parse parameters
-    const statusArray = statuses ? statuses.split(',').map(Number) : [];
-    const pageSizeInt = pageSize ? parseInt(pageSize, 10) : null;
-    const pageInt = page ? parseInt(page, 10) : null;
+    const statusArray = statuses
+      ? statuses.split(',').map(s => parseInt(s, 10)).filter(Number.isInteger)
+      : [];
+    const pageSizeInt = pageSize ? parseInt(pageSize, 10) : 10;
+    const pageInt = page ? parseInt(page, 10) : 1;
     const sort = sortOrder ?? 'ASC'; // Default to ascending
     const additionalInfo = verbose === 'true';
+
+    // Validate pagination
+    if (pageInt <= 0 || pageSizeInt <= 0) {
+      return res.status(422).json({
+        event: "UNPROCESSABLE_ENTITY",
+        message: "Pagination values must be greater than zero."
+      });
+    }
   
     // Validate pagination and status filters
     if ((pageSizeInt && !pageInt) || (!pageSizeInt && pageInt) || (pageInt && pageInt <= 0) || (pageSizeInt && pageSizeInt <= 0)) {
@@ -395,134 +405,117 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
       });
     }
   
-    // Prepare the base query to fetch coins from the database
-    let query = `SELECT * FROM coins WHERE userRecipient->>'userId' = ? OR userSender->>'userId' = ?`;
+    // Prepare base query and parameters
+    let baseQuery = `FROM coins WHERE (userRecipient->>'userId' = ? OR userSender->>'userId' = ?)`;
     let queryParams = [req.user, req.user];
   
-    // Filter by status if provided
+    // Apply status filtering only if statuses are provided
     if (statusArray.length > 0) {
-      query += ' AND coinStatus IN (' + statusArray.map(() => '?').join(', ') + ')';
+      baseQuery += ` AND coinStatus IN (${statusArray.map(() => '?').join(', ')})`;
       queryParams.push(...statusArray);
     }
   
-    // Sort and paginate
-    query += ` ORDER BY redeemedDate ${sort}`;
-    if (pageSizeInt && pageInt) {
-      const offset = (pageInt - 1) * pageSizeInt;
-      query += ` LIMIT ? OFFSET ?`;
-      queryParams.push(pageSizeInt, offset);
-    }
+    // Get total count of matching records
+    const countQuery = `SELECT COUNT(*) AS total ${baseQuery}`;
   
-    // Execute query
-    db.all(query, queryParams, async (err, rows) => {
+    db.get(countQuery, queryParams, (err, countResult) => {
       if (err) {
-        console.error("Error querying coins:", err);
+        console.error("Error counting coins:", err);
         return res.status(500).json({
           event: "INTERNAL_SERVER_ERROR",
-          message: "An unexpected error occurred while processing the request. Please try again later."
+          message: "An error occurred while counting records."
         });
       }
   
-      if (rows.length === 0) {
+      const totalElements = countResult?.total || 0;
+  
+      // If no records found, return 404
+      if (totalElements === 0) {
         return res.status(404).json({
           event: "RESOURCE_NOT_FOUND",
           message: "No coins were found for the provided filters."
         });
       }
   
-      try {
-        // Parse JSON fields and fetch additional data if verbose
-        rows = await Promise.all(
-          rows.map(async (row) => {
-            if (row.userRecipient) row.userRecipient = JSON.parse(row.userRecipient);
-            if (row.userSender) row.userSender = JSON.parse(row.userSender);
+      // Fetch paginated results
+      let dataQuery = `SELECT * ${baseQuery} ORDER BY redeemedDate ${sort}`;
+      if (pageSizeInt && pageInt) {
+        const offset = (pageInt - 1) * pageSizeInt;
+        dataQuery += ` LIMIT ? OFFSET ?`;
+        queryParams.push(pageSizeInt, offset);
+      }
   
-            // Add firstName, lastName, and imgUrl for verbose response
-            if (additionalInfo) {
-              if (row.userRecipient && row.userRecipient.userId) {
-                const recipient = await new Promise((resolve, reject) => {
-                  const query = `SELECT firstName, lastName, imgUrl FROM users WHERE userId = ?`;
-                  db.get(query, [row.userRecipient.userId], (err, user) => {
-                    if (err) reject(err);
-                    else resolve(user);
-                  });
-                });
-                if (recipient) {
-                  row.userRecipient.firstName = recipient.firstName;
-                  row.userRecipient.lastName = recipient.lastName; // Use imgUrl from users
-                }
-              }
-  
-              if (row.userSender && row.userSender.userId) {
-                const sender = await new Promise((resolve, reject) => {
-                  const query = `SELECT firstName, lastName, imgUrl FROM users WHERE userId = ?`;
-                  db.get(query, [row.userSender.userId], (err, user) => {
-                    if (err) reject(err);
-                    else resolve(user);
-                  });
-                });
-                if (sender) {
-                  row.userSender.firstName = sender.firstName;
-                  row.userSender.lastName = sender.lastName;
-                  row.userSender.userImgUrl = sender.imgUrl; // Use imgUrl from users
-                }
-              }
-            }
-  
-            return row;
-          })
-        );
-  
-        // Prepare response
-        const response = {
-          coins: rows.map((coin) => {
-            if (additionalInfo) {
-              return coin; // Include all details
-            } else {
-              return {
-                coinId: coin.coinId,
-                coinStatus: coin.coinStatus,
-                latitude: coin.latitude,
-                longitude: coin.longitude,
-                message: coin.message,
-                cashAmount: coin.cashAmount,
-                creationDate: coin.creationDate,
-                expirationDate: coin.expirationDate,
-                redeemedDate: coin.redeemedDate,
-                userSender: {
-                  userId: coin.userSender.userId,
-                  userImgUrl: coin.userSender.userImgUrl,
-                  firstName: coin.userSender.firstName,
-                  lastName: coin.userSender.lastName,
-                },
-                userRecipient: {
-                  userId: coin.userRecipient.userId,
-                  userImgUrl: coin.userRecipient.userImgUrl,
-                  firstName: coin.userRecipient.firstName,
-                  lastName: coin.userRecipient.lastName,
-                },
-              };
-            }
-          }),
-        };
-  
-        // Add pagination if applicable
-        if (pageSizeInt && pageInt) {
-          response.page = pageInt;
-          response.pageSize = pageSizeInt;
-          response.totalElements = rows.length; // Adjust if total count is available
+      db.all(dataQuery, queryParams, async (err, rows) => {
+        if (err) {
+          console.error("Error querying coins:", err);
+          return res.status(500).json({
+            event: "INTERNAL_SERVER_ERROR",
+            message: "An error occurred while fetching records."
+          });
         }
   
-        res.status(200).json(response);
-      } catch (error) {
-        console.error("Error processing coins:", error);
-        res.status(500).json({
-          event: "INTERNAL_SERVER_ERROR",
-          message: "An unexpected error occurred while processing the request. Please try again later."
-        });
-      }
+        try {
+          // Process user details if verbose mode is enabled
+          rows = await Promise.all(
+            rows.map(async (row) => {
+              if (row.userRecipient) row.userRecipient = JSON.parse(row.userRecipient);
+              if (row.userSender) row.userSender = JSON.parse(row.userSender);
+  
+              if (additionalInfo) {
+                const fetchUserDetails = async (userId) => {
+                  return new Promise((resolve, reject) => {
+                    db.get(
+                      `SELECT firstName, lastName, imgUrl FROM users WHERE userId = ?`,
+                      [userId],
+                      (err, user) => (err ? reject(err) : resolve(user))
+                    );
+                  });
+                };
+  
+                if (row.userRecipient?.userId) {
+                  const recipient = await fetchUserDetails(row.userRecipient.userId);
+                  if (recipient) {
+                    row.userRecipient = { ...row.userRecipient, ...recipient };
+                  }
+                }
+  
+                if (row.userSender?.userId) {
+                  const sender = await fetchUserDetails(row.userSender.userId);
+                  if (sender) {
+                    row.userSender = { ...row.userSender, ...sender };
+                  }
+                }
+              }
+  
+              return row;
+            })
+          );
+  
+          // Prepare response with pagination details
+          const totalPages = Math.ceil(totalElements / pageSizeInt);
+          const hasMore = pageInt < totalPages;
+  
+          res.status(200).json({
+            coins: rows,
+            pagination: {
+              page: pageInt,
+              pageSize: pageSizeInt,
+              totalElements,
+              totalPages,
+              hasMore
+            }
+          });
+        } catch (error) {
+          console.error("Error processing coins:", error);
+          res.status(500).json({
+            event: "INTERNAL_SERVER_ERROR",
+            message: "An error occurred while processing the request."
+          });
+        }
+      });
     });
   });
+  
    
 
   // gets all pending coins for a given user
