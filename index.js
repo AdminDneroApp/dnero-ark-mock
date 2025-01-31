@@ -738,9 +738,10 @@ app.get('/DneroArk/coins/pending/count', checkAccessToken, (req, res) => {
   
   
   // sets the redeem date and status on the given coin
+  // sets the redeem date and status on the given coin
   app.post('/DneroArk/coins/redeem/:coinId', checkAccessToken, (req, res) => {
     const coinId = parseInt(req.params.coinId, 10);
-  
+
     // Validate coinId
     if (isNaN(coinId)) {
       return res.status(400).json({
@@ -748,9 +749,9 @@ app.get('/DneroArk/coins/pending/count', checkAccessToken, (req, res) => {
         message: "One or more query parameters are invalid or malformed.",
       });
     }
-  
+
     const query = `SELECT * FROM coins WHERE coinId = ?`;
-  
+
     db.get(query, [coinId], (err, coin) => {
       if (err) {
         console.error("Error querying coin:", err);
@@ -759,28 +760,28 @@ app.get('/DneroArk/coins/pending/count', checkAccessToken, (req, res) => {
           message: "An unexpected error occurred. Please try again later.",
         });
       }
-  
+
       if (!coin) {
         return res.status(404).json({
           event: "COIN_NOT_FOUND",
           message: "The specified coin does not exist.",
         });
       }
-  
+
       if (coin.coinStatus === 2) {
         return res.status(400).json({
           event: "COIN_ALREADY_REDEEMED",
           message: "The coin has already been redeemed.",
         });
       }
-  
+
       const redeemedDate = new Date().toISOString();
       const updateQuery = `
         UPDATE coins
         SET redeemedDate = ?, coinStatus = ?
         WHERE coinId = ?
       `;
-  
+
       db.run(updateQuery, [redeemedDate, 2, coinId], function (err) {
         if (err) {
           console.error("Error updating coin:", err);
@@ -789,12 +790,12 @@ app.get('/DneroArk/coins/pending/count', checkAccessToken, (req, res) => {
             message: "An unexpected error occurred. Please try again later.",
           });
         }
-  
+
         const updatedCoin = { ...coin, redeemedDate, coinStatus: 2 };
-  
+
         let senderId = '';
         let receiverId = '';
-  
+
         if (updatedCoin.userRecipient) {
           updatedCoin.userRecipient = JSON.parse(updatedCoin.userRecipient);
           receiverId = updatedCoin.userRecipient.userId;
@@ -803,7 +804,7 @@ app.get('/DneroArk/coins/pending/count', checkAccessToken, (req, res) => {
           updatedCoin.userSender = JSON.parse(updatedCoin.userSender);
           senderId = updatedCoin.userSender.userId;
         }
-  
+
         const walletUpdateQuery = `
           UPDATE wallet
           SET cashBalance = CASE
@@ -812,7 +813,7 @@ app.get('/DneroArk/coins/pending/count', checkAccessToken, (req, res) => {
           END
           WHERE userId IN (?, ?)
         `;
-  
+
         db.run(walletUpdateQuery, [senderId, coin.cashAmount, receiverId, coin.cashAmount, senderId, receiverId], function (err) {
           if (err) {
             console.error("Error updating wallet:", err);
@@ -821,10 +822,10 @@ app.get('/DneroArk/coins/pending/count', checkAccessToken, (req, res) => {
               message: "An unexpected error occurred. Please try again later.",
             });
           }
-  
+
           // Fetch sender and recipient names
           const userDetailsQuery = `SELECT userId, firstName, lastName FROM users WHERE userId IN (?, ?)`;
-  
+
           db.all(userDetailsQuery, [senderId, receiverId], (err, users) => {
             if (err) {
               console.error("Error fetching user details:", err);
@@ -833,7 +834,7 @@ app.get('/DneroArk/coins/pending/count', checkAccessToken, (req, res) => {
                 message: "An unexpected error occurred. Please try again later.",
               });
             }
-  
+
             users.forEach((user) => {
               if (user.userId === senderId) {
                 updatedCoin.userSender.firstName = user.firstName;
@@ -844,41 +845,67 @@ app.get('/DneroArk/coins/pending/count', checkAccessToken, (req, res) => {
                 updatedCoin.userRecipient.lastName = user.lastName;
               }
             });
-  
-            // Insert the transaction record here
-            const transactionInsertQuery = `
+
+            // Insert the sender's transaction log
+            const senderTransactionInsertQuery = `
               INSERT INTO transactions (transactionId, interactionType, amount, coinStatus, expirationDate, capturedDate, createDate, user)
               VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             `;
-  
-            const transactionId = Math.floor(Math.random() * 900) + 100; // Generate unique transaction ID
-            const interactionType = 0; // Assuming 0 represents a coin redemption
-            const capturedDate = redeemedDate; // Use the same redeemed date for capturedDate
-            const user = JSON.stringify({ userId: receiverId }); // Add receiver details
-  
+
+            const senderTransactionId = Math.floor(Math.random() * 900) + 100;
             db.run(
-              transactionInsertQuery,
+              senderTransactionInsertQuery,
               [
-                transactionId,
-                interactionType,
+                senderTransactionId,
+                1, // Sent interaction
                 coin.cashAmount,
-                2, // coinStatus for redeemed
+                2, // Coin status for redeemed
                 coin.expirationDate,
-                capturedDate,
-                new Date().toISOString(), // createDate
-                user,
+                redeemedDate, // Captured date
+                new Date().toISOString(), // Create date
+                JSON.stringify({ userId: senderId }), // Sender details
               ],
               function (err) {
                 if (err) {
-                  console.error("Error inserting transaction:", err);
+                  console.error("Error inserting sender transaction:", err);
                   return res.status(500).json({
                     event: "INTERNAL_SERVER_ERROR",
-                    message: "Failed to record the transaction. Please try again later.",
+                    message: "Failed to record the sender transaction. Please try again later.",
                   });
                 }
-  
-                // Send the final response
-                return res.status(200).json(updatedCoin);
+
+                // Insert the recipient's transaction log
+                const recipientTransactionInsertQuery = `
+                  INSERT INTO transactions (transactionId, interactionType, amount, coinStatus, expirationDate, capturedDate, createDate, user)
+                  VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                `;
+
+                const recipientTransactionId = Math.floor(Math.random() * 900) + 100;
+                db.run(
+                  recipientTransactionInsertQuery,
+                  [
+                    recipientTransactionId,
+                    0, // Received interaction
+                    coin.cashAmount,
+                    2, // Coin status for redeemed
+                    coin.expirationDate,
+                    redeemedDate, // Captured date
+                    new Date().toISOString(), // Create date
+                    JSON.stringify({ userId: receiverId }), // Recipient details
+                  ],
+                  function (err) {
+                    if (err) {
+                      console.error("Error inserting recipient transaction:", err);
+                      return res.status(500).json({
+                        event: "INTERNAL_SERVER_ERROR",
+                        message: "Failed to record the recipient transaction. Please try again later.",
+                      });
+                    }
+
+                    // Send the final response
+                    return res.status(200).json(updatedCoin);
+                  }
+                );
               }
             );
           });
@@ -886,9 +913,8 @@ app.get('/DneroArk/coins/pending/count', checkAccessToken, (req, res) => {
       });
     });
   });
-  
-  
 
+  
    // drops a new coin for a given user based on their userId or phone number
    app.post('/DneroArk/coins/Drop', checkAccessToken, async (req, res) => {
     const { latitude, longitude, message, cashAmount, expirationDate, userRecipientId, userRecipientPhone } = req.body;
