@@ -49,7 +49,6 @@ const decryptHash = (hash) => {
   return decryptedCredential;
 };
 
-
 //----------------------- User ----------------------------//
 
 //This endpoint verifies whether the provided phone numbers exist in the system's records. 
@@ -914,11 +913,11 @@ app.get('/DneroArk/coins/pending/count', checkAccessToken, (req, res) => {
   
         if (user) {
           const existingCoin = await new Promise((resolve, reject) => {
-            const checkCoinQuery = `SELECT * FROM coins WHERE latitude = ? AND longitude = ? AND userRecipient LIKE ?`;
+            const checkCoinQuery = `SELECT * FROM coins WHERE latitude = ? AND longitude = ? AND userRecipient LIKE ? AND coinStatus = 1`;
             db.get(checkCoinQuery, [latitude, longitude, `%${userId}%`], (err, row) => {
               if (err) reject(err);
               else resolve(row);
-            });
+            });            
           });
   
           if (!existingCoin) {
