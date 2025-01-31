@@ -857,7 +857,7 @@ app.get('/DneroArk/coins/pending/count', checkAccessToken, (req, res) => {
               senderTransactionInsertQuery,
               [
                 senderTransactionId,
-                1, // Sent interaction
+                0, // Sent interaction
                 coin.cashAmount,
                 2, // Coin status for redeemed
                 coin.expirationDate,
@@ -885,7 +885,7 @@ app.get('/DneroArk/coins/pending/count', checkAccessToken, (req, res) => {
                   recipientTransactionInsertQuery,
                   [
                     recipientTransactionId,
-                    0, // Received interaction
+                    1, // Received interaction
                     coin.cashAmount,
                     2, // Coin status for redeemed
                     coin.expirationDate,
