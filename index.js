@@ -845,12 +845,48 @@ app.get('/DneroArk/coins/pending/count', checkAccessToken, (req, res) => {
               }
             });
   
-            return res.status(200).json(updatedCoin);
+            // Insert the transaction record here
+            const transactionInsertQuery = `
+              INSERT INTO transactions (transactionId, interactionType, amount, coinStatus, expirationDate, capturedDate, createDate, user)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            `;
+  
+            const transactionId = Math.floor(Math.random() * 900) + 100; // Generate unique transaction ID
+            const interactionType = 0; // Assuming 0 represents a coin redemption
+            const capturedDate = redeemedDate; // Use the same redeemed date for capturedDate
+            const user = JSON.stringify({ userId: receiverId }); // Add receiver details
+  
+            db.run(
+              transactionInsertQuery,
+              [
+                transactionId,
+                interactionType,
+                coin.cashAmount,
+                2, // coinStatus for redeemed
+                coin.expirationDate,
+                capturedDate,
+                new Date().toISOString(), // createDate
+                user,
+              ],
+              function (err) {
+                if (err) {
+                  console.error("Error inserting transaction:", err);
+                  return res.status(500).json({
+                    event: "INTERNAL_SERVER_ERROR",
+                    message: "Failed to record the transaction. Please try again later.",
+                  });
+                }
+  
+                // Send the final response
+                return res.status(200).json(updatedCoin);
+              }
+            );
           });
         });
       });
     });
   });
+  
   
 
    // drops a new coin for a given user based on their userId or phone number
