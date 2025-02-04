@@ -243,11 +243,12 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
     const pageInt = page ? parseInt(page, 10) : null;
     const reverse = reverseOrder === 'true';
   
+    // Query to only retrieve transactions where the session user matches the primary 'user' field
     let query = `
       SELECT * FROM transactions 
-      WHERE user->>'userId' = ? OR relatedUser->>'userId' = ?
+      WHERE user->>'userId' = ?
     `;
-    let queryParams = [req.user, req.user];
+    let queryParams = [req.user];
   
     if (statusArray.length > 0) {
       query += ' AND coinStatus IN (' + statusArray.map(() => '?').join(', ') + ')';
@@ -280,13 +281,20 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
         row.user = JSON.parse(row.user);
         row.relatedUser = JSON.parse(row.relatedUser);
   
+        // Determine 'from' and 'to' based on the interactionType
         if (row.interactionType === 1) {
+          // Sender interaction
           row.from = row.user;
           row.to = row.relatedUser;
-        } else {
+        } else if (row.interactionType === 0) {
+          // Receiver interaction
           row.from = row.relatedUser;
           row.to = row.user;
         }
+  
+        // Remove unnecessary raw user fields
+        delete row.user;
+        delete row.relatedUser;
   
         return row;
       });
@@ -298,6 +306,7 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
       res.status(200).json({ transactions: rows });
     });
   });
+  
   
 
   //----------------------- Coins ----------------------------//
@@ -726,11 +735,7 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
                   INSERT INTO transactions (transactionId, interactionType, amount, coinStatus, expirationDate, capturedDate, createDate, user, relatedUser)
                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 `;
-
-                console.log(`[DEBUG] Inserting transaction: ${transactionId}, Type: ${interactionType}`);
-                console.log(`[DEBUG] User Details:`, userDetails);
-                console.log(`[DEBUG] Related User Details:`, relatedUserDetails);
-                
+  
                 db.run(
                   query,
                   [
@@ -760,9 +765,24 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
               transactionInsert(recipientTransactionId, 0, recipientDetails, senderDetails), // Recipient log
             ])
               .then(() => {
+                // Log the transactions after successful insert
+                console.log(`[INFO] Sender transaction inserted:`, {
+                  transactionId: senderTransactionId,
+                  interactionType: 1,
+                  user: senderDetails,
+                  relatedUser: recipientDetails,
+                });
+                console.log(`[INFO] Recipient transaction inserted:`, {
+                  transactionId: recipientTransactionId,
+                  interactionType: 0,
+                  user: recipientDetails,
+                  relatedUser: senderDetails,
+                });
+  
                 return res.status(200).json(updatedCoin);
               })
-              .catch(() => {
+              .catch((err) => {
+                console.error(`[ERROR] Error inserting transactions: ${err.message}`);
                 return res.status(500).json({
                   event: "INTERNAL_SERVER_ERROR",
                   message: "Failed to record transactions. Please try again later.",
@@ -773,6 +793,7 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
       });
     });
   });
+  
   
   
   // sets the redeem date and status on the given coin
