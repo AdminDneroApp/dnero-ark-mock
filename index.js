@@ -761,8 +761,8 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
             const recipientTransactionId = Math.floor(Math.random() * 900) + 100;
   
             Promise.all([
-              transactionInsert(senderTransactionId, 1, senderDetails, recipientDetails), // Sender log
-              transactionInsert(recipientTransactionId, 0, recipientDetails, senderDetails), // Recipient log
+              transactionInsert(senderTransactionId, 0, senderDetails, recipientDetails), // Sender log
+              transactionInsert(recipientTransactionId, 1, recipientDetails, senderDetails), // Recipient log
             ])
               .then(() => {
                 // Log the transactions after successful insert
