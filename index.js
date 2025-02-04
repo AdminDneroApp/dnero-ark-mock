@@ -359,6 +359,11 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
               }
             }
   
+            // Convert the user objects to strings for proper logging
+            row.user = JSON.stringify(row.user);
+            row.to = JSON.stringify(row.to);
+            row.from = JSON.stringify(row.from);
+  
             return row;
           })
         );
@@ -380,7 +385,7 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
           response.totalTransactions = rows.length; // Adjust to reflect the total count in DB if available
         }
   
-        console.log("[INFO] Transactions processed successfully:", response);
+        console.log("[INFO] Transactions processed successfully:", JSON.stringify(response, null, 2));
         res.status(200).json(response);
       } catch (error) {
         console.error("Error processing transactions:", error);
@@ -391,6 +396,7 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
       }
     });
   });
+  
 
   //----------------------- Coins ----------------------------//
 
