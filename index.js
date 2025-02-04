@@ -713,7 +713,7 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
             if (err) {
               return res.status(500).json({
                 event: "INTERNAL_SERVER_ERROR",
-                message: "An unexpected error occurred. Please try again later.",
+                message: "An unexpected error occurred while fetching user details.",
               });
             }
   
@@ -765,24 +765,16 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
               transactionInsert(recipientTransactionId, 1, recipientDetails, senderDetails), // Recipient log
             ])
               .then(() => {
-                // Log the transactions after successful insert
-                console.log(`[INFO] Sender transaction inserted:`, {
-                  transactionId: senderTransactionId,
-                  interactionType: 1,
-                  user: senderDetails,
-                  relatedUser: recipientDetails,
-                });
-                console.log(`[INFO] Recipient transaction inserted:`, {
-                  transactionId: recipientTransactionId,
-                  interactionType: 0,
-                  user: recipientDetails,
-                  relatedUser: senderDetails,
-                });
+                // Include firstName and lastName in the response
+                const response = {
+                  ...updatedCoin,
+                  sender: senderDetails,
+                  recipient: recipientDetails,
+                };
   
-                return res.status(200).json(updatedCoin);
+                return res.status(200).json(response);
               })
               .catch((err) => {
-                console.error(`[ERROR] Error inserting transactions: ${err.message}`);
                 return res.status(500).json({
                   event: "INTERNAL_SERVER_ERROR",
                   message: "Failed to record transactions. Please try again later.",
@@ -793,6 +785,7 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
       });
     });
   });
+  
   
   
   
