@@ -248,7 +248,7 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
     if (statuses && statusArray.some(isNaN)) {
       return res.status(400).json({
         event: "INVALID_STATUSES",
-        message: "The provided statuses are invalid or malformed."
+        message: "The provided statuses are invalid or malformed.",
       });
     }
   
@@ -256,21 +256,21 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
     if ((pageSizeInt && !pageInt) || (!pageSizeInt && pageInt)) {
       return res.status(400).json({
         event: "MISSING_PAGINATION",
-        message: "Both 'pageSize' and 'page' are required when using the paginator."
+        message: "Both 'pageSize' and 'page' are required when using the paginator.",
       });
     }
   
     if (pageInt && pageInt <= 0) {
       return res.status(422).json({
         event: "INVALID_PAGE",
-        message: "The page number must be a positive integer starting from 1."
+        message: "The page number must be a positive integer starting from 1.",
       });
     }
   
     if (pageSizeInt && pageSizeInt <= 0) {
       return res.status(422).json({
         event: "INVALID_PAGE_SIZE",
-        message: "The page size must be a positive integer."
+        message: "The page size must be a positive integer.",
       });
     }
   
@@ -298,7 +298,7 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
         console.error("Error querying transactions:", err);
         return res.status(500).json({
           event: "INTERNAL_SERVER_ERROR",
-          message: "An unexpected error occurred while retrieving the transactions. Please try again later."
+          message: "An unexpected error occurred while retrieving the transactions. Please try again later.",
         });
       }
   
@@ -306,7 +306,7 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
       if (rows.length === 0) {
         return res.status(404).json({
           event: "TRANSACTIONS_NOT_FOUND",
-          message: "No transactions were found for the given criteria."
+          message: "No transactions were found for the given criteria.",
         });
       }
   
@@ -317,19 +317,45 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
             if (row.user) {
               row.user = JSON.parse(row.user); // Parse the 'user' field if it is JSON
   
-              // Fetch the imgUrl for the user from the users table
-              const user = await new Promise((resolve, reject) => {
-                const query = `SELECT firstName, lastName, imgUrl FROM users WHERE userId = ?`;
-                db.get(query, [row.user.userId], (err, userDetails) => {
-                  if (err) reject(err);
-                  else resolve(userDetails);
-                });
-              });
+              // Determine the polarity based on interactionType
+              if (row.interactionType === 1) {
+                // Sent interaction: To = Recipient, From = Current User
+                row.to = row.user;
+                row.from = {
+                  userId: req.user,
+                  firstName: 'Current User First Name', // Replace with actual value if available
+                  lastName: 'Current User Last Name',  // Replace with actual value if available
+                };
+              } else if (row.interactionType === 0) {
+                // Received interaction: To = Current User, From = Sender
+                row.from = row.user;
+                row.to = {
+                  userId: req.user,
+                  firstName: 'Current User First Name', // Replace with actual value if available
+                  lastName: 'Current User Last Name',  // Replace with actual value if available
+                };
+              }
   
-              if (user) {
-                row.user.firstName = user.firstName;
-                row.user.lastName = user.lastName;
-                row.user.imgUrl = user.imgUrl; // Add imgUrl from users table
+              // Fetch imgUrl and other details for "to" and "from"
+              const fetchUserDetails = async (userId) => {
+                return new Promise((resolve, reject) => {
+                  const query = `SELECT firstName, lastName, imgUrl FROM users WHERE userId = ?`;
+                  db.get(query, [userId], (err, userDetails) => {
+                    if (err) reject(err);
+                    else resolve(userDetails);
+                  });
+                });
+              };
+  
+              // Fetch details for "to" and "from"
+              const toDetails = await fetchUserDetails(row.to.userId);
+              if (toDetails) {
+                row.to = { ...row.to, ...toDetails };
+              }
+  
+              const fromDetails = await fetchUserDetails(row.from.userId);
+              if (fromDetails) {
+                row.from = { ...row.from, ...fromDetails };
               }
             }
   
@@ -354,17 +380,17 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
           response.totalTransactions = rows.length; // Adjust to reflect the total count in DB if available
         }
   
+        console.log("[INFO] Transactions processed successfully:", response);
         res.status(200).json(response);
       } catch (error) {
         console.error("Error processing transactions:", error);
         res.status(500).json({
           event: "INTERNAL_SERVER_ERROR",
-          message: "An unexpected error occurred while processing the transactions. Please try again later."
+          message: "An unexpected error occurred while processing the transactions. Please try again later.",
         });
       }
     });
   });
-  
 
   //----------------------- Coins ----------------------------//
 
