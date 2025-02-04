@@ -282,11 +282,11 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
         row.relatedUser = JSON.parse(row.relatedUser);
   
         // Determine 'from' and 'to' based on the interactionType
-        if (row.interactionType === 1) {
+        if (row.interactionType === 0) {
           // Sender interaction
           row.from = row.user;
           row.to = row.relatedUser;
-        } else if (row.interactionType === 0) {
+        } else if (row.interactionType === 1) {
           // Receiver interaction
           row.from = row.relatedUser;
           row.to = row.user;
