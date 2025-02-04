@@ -515,8 +515,7 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
     });
   });
   
-   
-
+  
   // gets all pending coins for a given user
   app.get('/DneroArk/coins/pending', checkAccessToken, (req, res) => {
     const { pageSize, page, sortOrder, verbose } = req.query;
@@ -631,56 +630,234 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
   });
   
   
+  // gets the coin count for all pending coins a user has sent or recieved 
+  app.get('/DneroArk/coins/pending/count', checkAccessToken, (req, res) => {
+    // Ensure query parameters are valid (you can expand this validation if needed)
+    const { pageSize, page } = req.query;
 
-// gets the coin count for all pending coins a user has sent or recieved 
-app.get('/DneroArk/coins/pending/count', checkAccessToken, (req, res) => {
-  // Ensure query parameters are valid (you can expand this validation if needed)
-  const { pageSize, page } = req.query;
+    // Validate that query parameters are valid
+    if ((pageSize && !page) || (!pageSize && page)) {
+      return res.status(422).json({
+        event: "INVALID_PARAMETERS",
+        message: "One or more query parameters are invalid or malformed."
+      });
+    }
 
-  // Validate that query parameters are valid
-  if ((pageSize && !page) || (!pageSize && page)) {
-    return res.status(422).json({
-      event: "INVALID_PARAMETERS",
-      message: "One or more query parameters are invalid or malformed."
+    // Prepare the query to get the count of pending coins for the specified user
+    const query = `
+      SELECT COUNT(*) AS count 
+      FROM coins 
+      WHERE userRecipient->>'userId' = ? AND coinStatus = 1
+    `;
+
+    // Execute the SQL query
+    db.get(query, [req.user], (err, row) => {
+      if (err) {
+        console.error("Error querying coins count:", err);
+        return res.status(500).json({
+          event: "INTERNAL_SERVER_ERROR",
+          message: "An unexpected error occurred. Please try again later."
+        });
+      }
+
+      // If no result found, return a 404 (optional, depending on the business logic)
+      if (!row) {
+        return res.status(404).json({
+          event: "RESOURCE_NOT_FOUND",
+          message: "The requested resource could not be found."
+        });
+      }
+
+      // If no pending coins, return the count as 0
+      const response = {
+        count: row.count || 0
+      };
+
+      res.status(200).json(response);
     });
-  }
-
-  // Prepare the query to get the count of pending coins for the specified user
-  const query = `
-    SELECT COUNT(*) AS count 
-    FROM coins 
-    WHERE userRecipient->>'userId' = ? AND coinStatus = 1
-  `;
-
-  // Execute the SQL query
-  db.get(query, [req.user], (err, row) => {
-    if (err) {
-      console.error("Error querying coins count:", err);
-      return res.status(500).json({
-        event: "INTERNAL_SERVER_ERROR",
-        message: "An unexpected error occurred. Please try again later."
-      });
-    }
-
-    // If no result found, return a 404 (optional, depending on the business logic)
-    if (!row) {
-      return res.status(404).json({
-        event: "RESOURCE_NOT_FOUND",
-        message: "The requested resource could not be found."
-      });
-    }
-
-    // If no pending coins, return the count as 0
-    const response = {
-      count: row.count || 0
-    };
-
-    res.status(200).json(response);
   });
-});
 
-   //Retrieves a single coin and its details based on its unique identifier.
-   app.post('/DneroArk/coins/redeem/:coinId', checkAccessToken, (req, res) => {
+  app.post('/DneroArk/coins/redeem/:coinId', checkAccessToken, (req, res) => {
+    const coinId = parseInt(req.params.coinId, 10);
+  
+    console.log(`[INFO] Redeem request received for coinId: ${coinId}`);
+  
+    // Validate coinId
+    if (isNaN(coinId)) {
+      console.error(`[ERROR] Invalid coinId provided: ${req.params.coinId}`);
+      return res.status(400).json({
+        event: "INVALID_PARAMETERS",
+        message: "One or more query parameters are invalid or malformed.",
+      });
+    }
+  
+    const query = `SELECT * FROM coins WHERE coinId = ?`;
+  
+    db.get(query, [coinId], (err, coin) => {
+      if (err) {
+        console.error(`[ERROR] Error querying coin: ${err.message}`);
+        return res.status(500).json({
+          event: "INTERNAL_SERVER_ERROR",
+          message: "An unexpected error occurred. Please try again later.",
+        });
+      }
+  
+      if (!coin) {
+        console.warn(`[WARN] Coin not found for coinId: ${coinId}`);
+        return res.status(404).json({
+          event: "COIN_NOT_FOUND",
+          message: "The specified coin does not exist.",
+        });
+      }
+  
+      if (coin.coinStatus === 2) {
+        console.warn(`[WARN] Coin already redeemed: ${coinId}`);
+        return res.status(400).json({
+          event: "COIN_ALREADY_REDEEMED",
+          message: "The coin has already been redeemed.",
+        });
+      }
+  
+      const redeemedDate = new Date().toISOString();
+      const updateQuery = `
+        UPDATE coins
+        SET redeemedDate = ?, coinStatus = ?
+        WHERE coinId = ?
+      `;
+  
+      db.run(updateQuery, [redeemedDate, 2, coinId], function (err) {
+        if (err) {
+          console.error(`[ERROR] Error updating coin: ${err.message}`);
+          return res.status(500).json({
+            event: "INTERNAL_SERVER_ERROR",
+            message: "An unexpected error occurred. Please try again later.",
+          });
+        }
+  
+        const updatedCoin = { ...coin, redeemedDate, coinStatus: 2 };
+        console.log(`[INFO] Coin successfully updated:`, updatedCoin);
+  
+        let senderId = '';
+        let receiverId = '';
+  
+        try {
+          if (updatedCoin.userRecipient) {
+            updatedCoin.userRecipient = JSON.parse(updatedCoin.userRecipient);
+            receiverId = updatedCoin.userRecipient.userId;
+          }
+          if (updatedCoin.userSender) {
+            updatedCoin.userSender = JSON.parse(updatedCoin.userSender);
+            senderId = updatedCoin.userSender.userId;
+          }
+        } catch (err) {
+          console.error(`[ERROR] Error parsing user fields: ${err.message}`);
+          return res.status(500).json({
+            event: "INTERNAL_SERVER_ERROR",
+            message: "Failed to parse user details. Please try again later.",
+          });
+        }
+  
+        console.log(`[INFO] Sender ID: ${senderId}, Receiver ID: ${receiverId}`);
+  
+        const walletUpdateQuery = `
+          UPDATE wallet
+          SET cashBalance = CASE
+            WHEN userId = ? THEN cashBalance - ?
+            WHEN userId = ? THEN cashBalance + ?
+          END
+          WHERE userId IN (?, ?)
+        `;
+  
+        db.run(walletUpdateQuery, [senderId, coin.cashAmount, receiverId, coin.cashAmount, senderId, receiverId], function (err) {
+          if (err) {
+            console.error(`[ERROR] Error updating wallet balances: ${err.message}`);
+            return res.status(500).json({
+              event: "INTERNAL_SERVER_ERROR",
+              message: "An unexpected error occurred. Please try again later.",
+            });
+          }
+  
+          console.log(`[INFO] Wallet balances updated successfully for sender: ${senderId} and receiver: ${receiverId}`);
+  
+          const userDetailsQuery = `SELECT userId, firstName, lastName FROM users WHERE userId IN (?, ?)`;
+  
+          db.all(userDetailsQuery, [senderId, receiverId], (err, users) => {
+            if (err) {
+              console.error(`[ERROR] Error fetching user details: ${err.message}`);
+              return res.status(500).json({
+                event: "INTERNAL_SERVER_ERROR",
+                message: "An unexpected error occurred. Please try again later.",
+              });
+            }
+  
+            let senderDetails = {};
+            let recipientDetails = {};
+  
+            users.forEach((user) => {
+              if (user.userId === senderId) {
+                senderDetails = { userId: senderId, firstName: user.firstName, lastName: user.lastName };
+              }
+              if (user.userId === receiverId) {
+                recipientDetails = { userId: receiverId, firstName: user.firstName, lastName: user.lastName };
+              }
+            });
+  
+            console.log(`[INFO] Sender details:`, senderDetails);
+            console.log(`[INFO] Recipient details:`, recipientDetails);
+  
+            const transactionInsert = (transactionId, interactionType, userDetails) => {
+              return new Promise((resolve, reject) => {
+                const query = `
+                  INSERT INTO transactions (transactionId, interactionType, amount, coinStatus, expirationDate, capturedDate, createDate, user)
+                  VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                `;
+                db.run(
+                  query,
+                  [
+                    transactionId,
+                    interactionType,
+                    coin.cashAmount,
+                    2, // Coin status for redeemed
+                    coin.expirationDate,
+                    redeemedDate,
+                    new Date().toISOString(),
+                    JSON.stringify(userDetails),
+                  ],
+                  function (err) {
+                    if (err) reject(err);
+                    else resolve();
+                  }
+                );
+              });
+            };
+  
+            const senderTransactionId = Math.floor(Math.random() * 900) + 100;
+            const recipientTransactionId = Math.floor(Math.random() * 900) + 100;
+  
+            // Insert sender and recipient transactions
+            Promise.all([
+              transactionInsert(senderTransactionId, 1, recipientDetails), // Sender log
+              transactionInsert(recipientTransactionId, 0, senderDetails), // Recipient log
+            ])
+              .then(() => {
+                console.log(`[INFO] Transactions successfully recorded.`);
+                return res.status(200).json(updatedCoin);
+              })
+              .catch((err) => {
+                console.error(`[ERROR] Error inserting transactions: ${err.message}`);
+                return res.status(500).json({
+                  event: "INTERNAL_SERVER_ERROR",
+                  message: "Failed to record transactions. Please try again later.",
+                });
+              });
+          });
+        });
+      });
+    });
+  });
+  
+  // sets the redeem date and status on the given coin
+  app.post('/DneroArk/coins/redeem/:coinId', checkAccessToken, (req, res) => {
     const coinId = parseInt(req.params.coinId, 10);
   
     // Validate coinId
@@ -855,184 +1032,6 @@ app.get('/DneroArk/coins/pending/count', checkAccessToken, (req, res) => {
       });
     });
   });
-  
-  
-    // sets the redeem date and status on the given coin
-    app.post('/DneroArk/coins/redeem/:coinId', checkAccessToken, (req, res) => {
-      const coinId = parseInt(req.params.coinId, 10);
-    
-      // Validate coinId
-      if (isNaN(coinId)) {
-        return res.status(400).json({
-          event: "INVALID_PARAMETERS",
-          message: "One or more query parameters are invalid or malformed.",
-        });
-      }
-    
-      const query = `SELECT * FROM coins WHERE coinId = ?`;
-    
-      db.get(query, [coinId], (err, coin) => {
-        if (err) {
-          console.error("Error querying coin:", err);
-          return res.status(500).json({
-            event: "INTERNAL_SERVER_ERROR",
-            message: "An unexpected error occurred. Please try again later.",
-          });
-        }
-    
-        if (!coin) {
-          return res.status(404).json({
-            event: "COIN_NOT_FOUND",
-            message: "The specified coin does not exist.",
-          });
-        }
-    
-        if (coin.coinStatus === 2) {
-          return res.status(400).json({
-            event: "COIN_ALREADY_REDEEMED",
-            message: "The coin has already been redeemed.",
-          });
-        }
-    
-        const redeemedDate = new Date().toISOString();
-        const updateQuery = `
-          UPDATE coins
-          SET redeemedDate = ?, coinStatus = ?
-          WHERE coinId = ?
-        `;
-    
-        db.run(updateQuery, [redeemedDate, 2, coinId], function (err) {
-          if (err) {
-            console.error("Error updating coin:", err);
-            return res.status(500).json({
-              event: "INTERNAL_SERVER_ERROR",
-              message: "An unexpected error occurred. Please try again later.",
-            });
-          }
-    
-          const updatedCoin = { ...coin, redeemedDate, coinStatus: 2 };
-    
-          let senderId = '';
-          let receiverId = '';
-    
-          if (updatedCoin.userRecipient) {
-            updatedCoin.userRecipient = JSON.parse(updatedCoin.userRecipient);
-            receiverId = updatedCoin.userRecipient.userId;
-          }
-          if (updatedCoin.userSender) {
-            updatedCoin.userSender = JSON.parse(updatedCoin.userSender);
-            senderId = updatedCoin.userSender.userId;
-          }
-    
-          const walletUpdateQuery = `
-            UPDATE wallet
-            SET cashBalance = CASE
-              WHEN userId = ? THEN cashBalance - ?
-              WHEN userId = ? THEN cashBalance + ?
-            END
-            WHERE userId IN (?, ?)
-          `;
-    
-          db.run(walletUpdateQuery, [senderId, coin.cashAmount, receiverId, coin.cashAmount, senderId, receiverId], function (err) {
-            if (err) {
-              console.error("Error updating wallet:", err);
-              return res.status(500).json({
-                event: "INTERNAL_SERVER_ERROR",
-                message: "An unexpected error occurred. Please try again later.",
-              });
-            }
-    
-            // Fetch sender and recipient names
-            const userDetailsQuery = `SELECT userId, firstName, lastName FROM users WHERE userId IN (?, ?)`;
-    
-            db.all(userDetailsQuery, [senderId, receiverId], (err, users) => {
-              if (err) {
-                console.error("Error fetching user details:", err);
-                return res.status(500).json({
-                  event: "INTERNAL_SERVER_ERROR",
-                  message: "An unexpected error occurred. Please try again later.",
-                });
-              }
-    
-              let senderDetails = {};
-              let recipientDetails = {};
-    
-              users.forEach((user) => {
-                if (user.userId === senderId) {
-                  senderDetails = { userId: senderId, firstName: user.firstName, lastName: user.lastName };
-                }
-                if (user.userId === receiverId) {
-                  recipientDetails = { userId: receiverId, firstName: user.firstName, lastName: user.lastName };
-                }
-              });
-    
-              // Insert the sender's transaction log (sent interaction)
-              const senderTransactionInsertQuery = `
-                INSERT INTO transactions (transactionId, interactionType, amount, coinStatus, expirationDate, capturedDate, createDate, user)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-              `;
-    
-              const senderTransactionId = Math.floor(Math.random() * 900) + 100;
-              db.run(
-                senderTransactionInsertQuery,
-                [
-                  senderTransactionId,
-                  1, // Sent interaction
-                  coin.cashAmount,
-                  2, // Coin status for redeemed
-                  coin.expirationDate,
-                  redeemedDate, // Captured date
-                  new Date().toISOString(), // Create date
-                  JSON.stringify({ userId: receiverId, firstName: recipientDetails.firstName, lastName: recipientDetails.lastName }), // Recipient details
-                ],
-                function (err) {
-                  if (err) {
-                    console.error("Error inserting sender transaction:", err);
-                    return res.status(500).json({
-                      event: "INTERNAL_SERVER_ERROR",
-                      message: "Failed to record the sender transaction. Please try again later.",
-                    });
-                  }
-    
-                  // Insert the recipient's transaction log (received interaction)
-                  const recipientTransactionInsertQuery = `
-                    INSERT INTO transactions (transactionId, interactionType, amount, coinStatus, expirationDate, capturedDate, createDate, user)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                  `;
-    
-                  const recipientTransactionId = Math.floor(Math.random() * 900) + 100;
-                  db.run(
-                    recipientTransactionInsertQuery,
-                    [
-                      recipientTransactionId,
-                      0, // Received interaction
-                      coin.cashAmount,
-                      2, // Coin status for redeemed
-                      coin.expirationDate,
-                      redeemedDate, // Captured date
-                      new Date().toISOString(), // Create date
-                      JSON.stringify({ userId: senderId, firstName: senderDetails.firstName, lastName: senderDetails.lastName }), // Sender details
-                    ],
-                    function (err) {
-                      if (err) {
-                        console.error("Error inserting recipient transaction:", err);
-                        return res.status(500).json({
-                          event: "INTERNAL_SERVER_ERROR",
-                          message: "Failed to record the recipient transaction. Please try again later.",
-                        });
-                      }
-    
-                      // Send the final response
-                      return res.status(200).json(updatedCoin);
-                    }
-                  );
-                }
-              );
-            });
-          });
-        });
-      });
-    });
     
   
    // drops a new coin for a given user based on their userId or phone number
