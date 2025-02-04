@@ -844,59 +844,59 @@ app.post('/DneroArk/coins/redeem/:coinId', checkAccessToken, (req, res) => {
             }
           });
 
-          // Insert the recipient's transaction log (received interaction)
-          const recipientTransactionInsertQuery = `
+          // Insert the sender's transaction log (sent interaction)
+          const senderTransactionInsertQuery = `
             INSERT INTO transactions (transactionId, interactionType, amount, coinStatus, expirationDate, capturedDate, createDate, user)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
           `;
 
-          const recipientTransactionId = Math.floor(Math.random() * 900) + 100;
+          const senderTransactionId = Math.floor(Math.random() * 900) + 100;
           db.run(
-            recipientTransactionInsertQuery,
+            senderTransactionInsertQuery,
             [
-              recipientTransactionId,
-              0, // Received interaction
+              senderTransactionId,
+              1, // Sent interaction
               coin.cashAmount,
               2, // Coin status for redeemed
               coin.expirationDate,
               redeemedDate, // Captured date
               new Date().toISOString(), // Create date
-              JSON.stringify({ userId: receiverId }), // Recipient details
+              JSON.stringify({ userId: senderId }), // Sender details
             ],
             function (err) {
               if (err) {
-                console.error("Error inserting recipient transaction:", err);
+                console.error("Error inserting sender transaction:", err);
                 return res.status(500).json({
                   event: "INTERNAL_SERVER_ERROR",
-                  message: "Failed to record the recipient transaction. Please try again later.",
+                  message: "Failed to record the sender transaction. Please try again later.",
                 });
               }
 
-              // Insert the sender's transaction log (sent interaction)
-              const senderTransactionInsertQuery = `
+              // Insert the recipient's transaction log (received interaction)
+              const recipientTransactionInsertQuery = `
                 INSERT INTO transactions (transactionId, interactionType, amount, coinStatus, expirationDate, capturedDate, createDate, user)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
               `;
 
-              const senderTransactionId = Math.floor(Math.random() * 900) + 100;
+              const recipientTransactionId = Math.floor(Math.random() * 900) + 100;
               db.run(
-                senderTransactionInsertQuery,
+                recipientTransactionInsertQuery,
                 [
-                  senderTransactionId,
-                  1, // Sent interaction
+                  recipientTransactionId,
+                  0, // Received interaction
                   coin.cashAmount,
                   2, // Coin status for redeemed
                   coin.expirationDate,
                   redeemedDate, // Captured date
                   new Date().toISOString(), // Create date
-                  JSON.stringify({ userId: senderId }), // Sender details
+                  JSON.stringify({ userId: receiverId }), // Recipient details
                 ],
                 function (err) {
                   if (err) {
-                    console.error("Error inserting sender transaction:", err);
+                    console.error("Error inserting recipient transaction:", err);
                     return res.status(500).json({
                       event: "INTERNAL_SERVER_ERROR",
-                      message: "Failed to record the sender transaction. Please try again later.",
+                      message: "Failed to record the recipient transaction. Please try again later.",
                     });
                   }
 
@@ -911,7 +911,6 @@ app.post('/DneroArk/coins/redeem/:coinId', checkAccessToken, (req, res) => {
     });
   });
 });
-
 
   
    // drops a new coin for a given user based on their userId or phone number
