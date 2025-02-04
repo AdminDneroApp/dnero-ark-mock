@@ -238,53 +238,22 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
   app.get('/DneroArk/transactions', checkAccessToken, (req, res) => {
     const { statuses, pageSize, page, reverseOrder } = req.query;
   
-    // Validate and parse parameters
     const statusArray = statuses ? statuses.split(',').map(Number) : [];
     const pageSizeInt = pageSize ? parseInt(pageSize, 10) : null;
     const pageInt = page ? parseInt(page, 10) : null;
     const reverse = reverseOrder === 'true';
   
-    // Validate the statuses parameter
-    if (statuses && statusArray.some(isNaN)) {
-      return res.status(400).json({
-        event: "INVALID_STATUSES",
-        message: "The provided statuses are invalid or malformed.",
-      });
-    }
+    let query = `
+      SELECT * FROM transactions 
+      WHERE user->>'userId' = ? OR relatedUser->>'userId' = ?
+    `;
+    let queryParams = [req.user, req.user];
   
-    // Validate pagination parameters
-    if ((pageSizeInt && !pageInt) || (!pageSizeInt && pageInt)) {
-      return res.status(400).json({
-        event: "MISSING_PAGINATION",
-        message: "Both 'pageSize' and 'page' are required when using the paginator.",
-      });
-    }
-  
-    if (pageInt && pageInt <= 0) {
-      return res.status(422).json({
-        event: "INVALID_PAGE",
-        message: "The page number must be a positive integer starting from 1.",
-      });
-    }
-  
-    if (pageSizeInt && pageSizeInt <= 0) {
-      return res.status(422).json({
-        event: "INVALID_PAGE_SIZE",
-        message: "The page size must be a positive integer.",
-      });
-    }
-  
-    // Construct the base SQL query for retrieving transactions
-    let query = `SELECT * FROM transactions WHERE user->>'userId' = ?`;
-    let queryParams = [req.user];
-  
-    // Filter by status if provided
     if (statusArray.length > 0) {
       query += ' AND coinStatus IN (' + statusArray.map(() => '?').join(', ') + ')';
-      queryParams.push(...statusArray); // Add the statuses to the query parameters
+      queryParams.push(...statusArray);
     }
   
-    // Apply pagination if provided
     let limitOffsetClause = '';
     if (pageSizeInt && pageInt) {
       const offset = (pageInt - 1) * pageSizeInt;
@@ -292,108 +261,41 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
       queryParams.push(pageSizeInt, offset);
     }
   
-    // Execute the query to fetch transactions
     db.all(query + limitOffsetClause, queryParams, async (err, rows) => {
       if (err) {
-        console.error("Error querying transactions:", err);
         return res.status(500).json({
           event: "INTERNAL_SERVER_ERROR",
-          message: "An unexpected error occurred while retrieving the transactions. Please try again later.",
+          message: "An unexpected error occurred while retrieving the transactions.",
         });
       }
   
-      // Handle empty rows
       if (rows.length === 0) {
         return res.status(404).json({
           event: "TRANSACTIONS_NOT_FOUND",
-          message: "No transactions were found for the given criteria.",
+          message: "No transactions were found.",
         });
       }
   
-      try {
-        // Process rows to include user details with imgUrl
-        rows = await Promise.all(
-          rows.map(async (row) => {
-            if (row.user) {
-              row.user = JSON.parse(row.user); // Parse the 'user' field if it is JSON
+      rows = rows.map((row) => {
+        row.user = JSON.parse(row.user);
+        row.relatedUser = JSON.parse(row.relatedUser);
   
-              // Determine the polarity based on interactionType
-              if (row.interactionType === 1) {
-                // Sent interaction: To = Recipient, From = Current User
-                row.to = row.user;
-                row.from = {
-                  userId: req.user,
-                  firstName: 'Current User First Name', // Replace with actual value if available
-                  lastName: 'Current User Last Name',  // Replace with actual value if available
-                };
-              } else if (row.interactionType === 0) {
-                // Received interaction: To = Current User, From = Sender
-                row.from = row.user;
-                row.to = {
-                  userId: req.user,
-                  firstName: 'Current User First Name', // Replace with actual value if available
-                  lastName: 'Current User Last Name',  // Replace with actual value if available
-                };
-              }
-  
-              // Fetch imgUrl and other details for "to" and "from"
-              const fetchUserDetails = async (userId) => {
-                return new Promise((resolve, reject) => {
-                  const query = `SELECT firstName, lastName, imgUrl FROM users WHERE userId = ?`;
-                  db.get(query, [userId], (err, userDetails) => {
-                    if (err) reject(err);
-                    else resolve(userDetails);
-                  });
-                });
-              };
-  
-              // Fetch details for "to" and "from"
-              const toDetails = await fetchUserDetails(row.to.userId);
-              if (toDetails) {
-                row.to = { ...row.to, ...toDetails };
-              }
-  
-              const fromDetails = await fetchUserDetails(row.from.userId);
-              if (fromDetails) {
-                row.from = { ...row.from, ...fromDetails };
-              }
-            }
-  
-            // Convert the user objects to strings for proper logging
-            row.user = JSON.stringify(row.user);
-            row.to = JSON.stringify(row.to);
-            row.from = JSON.stringify(row.from);
-  
-            return row;
-          })
-        );
-  
-        // Reverse the order if specified
-        if (reverse) {
-          rows.reverse();
+        if (row.interactionType === 1) {
+          row.from = row.user;
+          row.to = row.relatedUser;
+        } else {
+          row.from = row.relatedUser;
+          row.to = row.user;
         }
   
-        // Prepare the response
-        const response = {
-          transactions: rows,
-        };
+        return row;
+      });
   
-        // Add pagination details if applicable
-        if (pageSizeInt && pageInt) {
-          response.page = pageInt;
-          response.pageSize = pageSizeInt;
-          response.totalTransactions = rows.length; // Adjust to reflect the total count in DB if available
-        }
-  
-        console.log("[INFO] Transactions processed successfully:", JSON.stringify(response, null, 2));
-        res.status(200).json(response);
-      } catch (error) {
-        console.error("Error processing transactions:", error);
-        res.status(500).json({
-          event: "INTERNAL_SERVER_ERROR",
-          message: "An unexpected error occurred while processing the transactions. Please try again later.",
-        });
+      if (reverse) {
+        rows.reverse();
       }
+  
+      res.status(200).json({ transactions: rows });
     });
   });
   
@@ -712,11 +614,7 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
   app.post('/DneroArk/coins/redeem/:coinId', checkAccessToken, (req, res) => {
     const coinId = parseInt(req.params.coinId, 10);
   
-    console.log(`[INFO] Redeem request received for coinId: ${coinId}`);
-  
-    // Validate coinId
     if (isNaN(coinId)) {
-      console.error(`[ERROR] Invalid coinId provided: ${req.params.coinId}`);
       return res.status(400).json({
         event: "INVALID_PARAMETERS",
         message: "One or more query parameters are invalid or malformed.",
@@ -727,7 +625,6 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
   
     db.get(query, [coinId], (err, coin) => {
       if (err) {
-        console.error(`[ERROR] Error querying coin: ${err.message}`);
         return res.status(500).json({
           event: "INTERNAL_SERVER_ERROR",
           message: "An unexpected error occurred. Please try again later.",
@@ -735,7 +632,6 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
       }
   
       if (!coin) {
-        console.warn(`[WARN] Coin not found for coinId: ${coinId}`);
         return res.status(404).json({
           event: "COIN_NOT_FOUND",
           message: "The specified coin does not exist.",
@@ -743,7 +639,6 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
       }
   
       if (coin.coinStatus === 2) {
-        console.warn(`[WARN] Coin already redeemed: ${coinId}`);
         return res.status(400).json({
           event: "COIN_ALREADY_REDEEMED",
           message: "The coin has already been redeemed.",
@@ -759,7 +654,6 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
   
       db.run(updateQuery, [redeemedDate, 2, coinId], function (err) {
         if (err) {
-          console.error(`[ERROR] Error updating coin: ${err.message}`);
           return res.status(500).json({
             event: "INTERNAL_SERVER_ERROR",
             message: "An unexpected error occurred. Please try again later.",
@@ -767,7 +661,6 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
         }
   
         const updatedCoin = { ...coin, redeemedDate, coinStatus: 2 };
-        console.log(`[INFO] Coin successfully updated:`, updatedCoin);
   
         let senderId = '';
         let receiverId = '';
@@ -782,14 +675,11 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
             senderId = updatedCoin.userSender.userId;
           }
         } catch (err) {
-          console.error(`[ERROR] Error parsing user fields: ${err.message}`);
           return res.status(500).json({
             event: "INTERNAL_SERVER_ERROR",
             message: "Failed to parse user details. Please try again later.",
           });
         }
-  
-        console.log(`[INFO] Sender ID: ${senderId}, Receiver ID: ${receiverId}`);
   
         const walletUpdateQuery = `
           UPDATE wallet
@@ -802,20 +692,16 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
   
         db.run(walletUpdateQuery, [senderId, coin.cashAmount, receiverId, coin.cashAmount, senderId, receiverId], function (err) {
           if (err) {
-            console.error(`[ERROR] Error updating wallet balances: ${err.message}`);
             return res.status(500).json({
               event: "INTERNAL_SERVER_ERROR",
               message: "An unexpected error occurred. Please try again later.",
             });
           }
   
-          console.log(`[INFO] Wallet balances updated successfully for sender: ${senderId} and receiver: ${receiverId}`);
-  
           const userDetailsQuery = `SELECT userId, firstName, lastName FROM users WHERE userId IN (?, ?)`;
   
           db.all(userDetailsQuery, [senderId, receiverId], (err, users) => {
             if (err) {
-              console.error(`[ERROR] Error fetching user details: ${err.message}`);
               return res.status(500).json({
                 event: "INTERNAL_SERVER_ERROR",
                 message: "An unexpected error occurred. Please try again later.",
@@ -834,14 +720,11 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
               }
             });
   
-            console.log(`[INFO] Sender details:`, senderDetails);
-            console.log(`[INFO] Recipient details:`, recipientDetails);
-  
-            const transactionInsert = (transactionId, interactionType, userDetails) => {
+            const transactionInsert = (transactionId, interactionType, userDetails, relatedUserDetails) => {
               return new Promise((resolve, reject) => {
                 const query = `
-                  INSERT INTO transactions (transactionId, interactionType, amount, coinStatus, expirationDate, capturedDate, createDate, user)
-                  VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                  INSERT INTO transactions (transactionId, interactionType, amount, coinStatus, expirationDate, capturedDate, createDate, user, relatedUser)
+                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 `;
                 db.run(
                   query,
@@ -854,6 +737,7 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
                     redeemedDate,
                     new Date().toISOString(),
                     JSON.stringify(userDetails),
+                    JSON.stringify(relatedUserDetails),
                   ],
                   function (err) {
                     if (err) reject(err);
@@ -866,17 +750,14 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
             const senderTransactionId = Math.floor(Math.random() * 900) + 100;
             const recipientTransactionId = Math.floor(Math.random() * 900) + 100;
   
-            // Insert sender and recipient transactions
             Promise.all([
-              transactionInsert(senderTransactionId, 1, recipientDetails), // Sender log
-              transactionInsert(recipientTransactionId, 0, senderDetails), // Recipient log
+              transactionInsert(senderTransactionId, 1, senderDetails, recipientDetails), // Sender log
+              transactionInsert(recipientTransactionId, 0, recipientDetails, senderDetails), // Recipient log
             ])
               .then(() => {
-                console.log(`[INFO] Transactions successfully recorded.`);
                 return res.status(200).json(updatedCoin);
               })
-              .catch((err) => {
-                console.error(`[ERROR] Error inserting transactions: ${err.message}`);
+              .catch(() => {
                 return res.status(500).json({
                   event: "INTERNAL_SERVER_ERROR",
                   message: "Failed to record transactions. Please try again later.",
@@ -887,6 +768,7 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
       });
     });
   });
+  
   
   // sets the redeem date and status on the given coin
   app.post('/DneroArk/coins/redeem/:coinId', checkAccessToken, (req, res) => {
