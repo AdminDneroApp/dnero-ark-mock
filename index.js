@@ -785,17 +785,14 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
                       event: "INTERNAL_SERVER_ERROR",
                       message: "Failed to record transactions. Please try again later.",
                   });
-              });
-          
+              });          
           });
         });
       });
     });
   });
-  
-  
-  
-  
+
+
   // sets the redeem date and status on the given coin
   app.post('/DneroArk/coins/redeem/:coinId', checkAccessToken, (req, res) => {
     const coinId = parseInt(req.params.coinId, 10);
@@ -975,138 +972,165 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
     
   
    // drops a new coin for a given user based on their userId or phone number
-   app.post('/DneroArk/coins/Drop', checkAccessToken, async (req, res) => {
-    const { latitude, longitude, message, cashAmount, expirationDate, userRecipientId, userRecipientPhone } = req.body;
-  
-    if (!latitude || !longitude || !cashAmount || !expirationDate) {
-      return res.status(400).json({
-        event: "INVALID_PARAMETERS",
-        message: "One or more required parameters are missing or invalid.",
+app.post('/DneroArk/coins/Drop', checkAccessToken, async (req, res) => {
+  const { latitude, longitude, message, cashAmount, expirationDate, userRecipientId, userRecipientPhone } = req.body;
+
+  if (!latitude || !longitude || !cashAmount || !expirationDate) {
+    return res.status(400).json({
+      event: "INVALID_PARAMETERS",
+      message: "One or more required parameters are missing or invalid.",
+    });
+  }
+
+  try {
+    const sender = await new Promise((resolve, reject) => {
+      const senderQuery = `SELECT * FROM users WHERE userId = ?`;
+      db.get(senderQuery, [req.user], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+
+    if (!sender) {
+      return res.status(404).json({
+        event: "USER_NOT_AUTHORIZED",
+        message: "You do not have permission to drop this coin.",
       });
     }
-  
-    try {
-      const sender = await new Promise((resolve, reject) => {
-        const senderQuery = `SELECT * FROM users WHERE userId = ?`;
-        db.get(senderQuery, [req.user], (err, row) => {
+
+    // Get sender's current balance and pending coins
+    const senderWallet = await new Promise((resolve, reject) => {
+      const walletQuery = `SELECT cashBalance FROM wallet WHERE userId = ?`;
+      db.get(walletQuery, [req.user], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+
+    const pendingCoins = await new Promise((resolve, reject) => {
+      const pendingQuery = `SELECT SUM(cashAmount) AS totalPending FROM coins WHERE userSender LIKE ? AND coinStatus = 1`;
+      db.get(pendingQuery, [`%${req.user}%`], (err, row) => {
+        if (err) reject(err);
+        else resolve(row ? row.totalPending || 0 : 0);
+      });
+    });
+
+    const floatBalance = parseFloat(senderWallet.cashBalance) - parseFloat(pendingCoins);
+
+    if (floatBalance < parseFloat(cashAmount)) {
+      return res.status(400).json({
+        event: "INSUFFICIENT_BALANCE",
+        message: "Your balance, including pending coins, is not sufficient to drop this coin.",
+      });
+    }
+
+    const recipientIds = new Set();
+
+    if (Array.isArray(userRecipientId)) {
+      userRecipientId.forEach((id) => recipientIds.add(id));
+    }
+
+    if (Array.isArray(userRecipientPhone)) {
+      for (const phone of userRecipientPhone) {
+        const user = await new Promise((resolve, reject) => {
+          const userQuery = `SELECT userId FROM users WHERE deviceInfo LIKE ?`;
+          db.get(userQuery, [`%${phone}%`], (err, row) => {
+            if (err) reject(err);
+            else if (row) resolve(row.userId);
+            else resolve(null);
+          });
+        });
+
+        if (user) recipientIds.add(user);
+      }
+    }
+
+    const createdCoins = [];
+    for (const userId of recipientIds) {
+      const user = await new Promise((resolve, reject) => {
+        const userQuery = `SELECT userId, firstName, lastName, imgUrl FROM users WHERE userId = ?`;
+        db.get(userQuery, [userId], (err, row) => {
           if (err) reject(err);
           else resolve(row);
         });
       });
-  
-      if (!sender) {
-        return res.status(404).json({
-          event: "USER_NOT_AUTHORIZED",
-          message: "You do not have permission to drop this coin.",
-        });
-      }
-  
-      const recipientIds = new Set();
-  
-      if (Array.isArray(userRecipientId)) {
-        userRecipientId.forEach((id) => recipientIds.add(id));
-      }
-  
-      if (Array.isArray(userRecipientPhone)) {
-        for (const phone of userRecipientPhone) {
-          const user = await new Promise((resolve, reject) => {
-            const userQuery = `SELECT userId FROM users WHERE deviceInfo LIKE ?`;
-            db.get(userQuery, [`%${phone}%`], (err, row) => {
-              if (err) reject(err);
-              else if (row) resolve(row.userId);
-              else resolve(null);
-            });
-          });
-  
-          if (user) recipientIds.add(user);
-        }
-      }
-  
-      const createdCoins = [];
-      for (const userId of recipientIds) {
-        const user = await new Promise((resolve, reject) => {
-          const userQuery = `SELECT userId, firstName, lastName, imgUrl FROM users WHERE userId = ?`;
-          db.get(userQuery, [userId], (err, row) => {
+
+      if (user) {
+        const existingCoin = await new Promise((resolve, reject) => {
+          const checkCoinQuery = `SELECT * FROM coins WHERE latitude = ? AND longitude = ? AND userRecipient LIKE ? AND coinStatus = 1`;
+          db.get(checkCoinQuery, [latitude, longitude, `%${userId}%`], (err, row) => {
             if (err) reject(err);
             else resolve(row);
           });
         });
-  
-        if (user) {
-          const existingCoin = await new Promise((resolve, reject) => {
-            const checkCoinQuery = `SELECT * FROM coins WHERE latitude = ? AND longitude = ? AND userRecipient LIKE ? AND coinStatus = 1`;
-            db.get(checkCoinQuery, [latitude, longitude, `%${userId}%`], (err, row) => {
-              if (err) reject(err);
-              else resolve(row);
-            });            
-          });
-  
-          if (!existingCoin) {
-            const coin = await new Promise((resolve, reject) => {
-              const insertQuery = `
-                INSERT INTO coins (coinId, coinStatus, latitude, longitude, message, cashAmount, creationDate, expirationDate, redeemedDate, userSender, userRecipient)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-              `;
-              const coinId = Math.floor(Math.random() * 900) + 100;
-              const creationDate = new Date().toISOString();
-              db.run(
-                insertQuery,
-                [
+
+        if (!existingCoin) {
+          const coin = await new Promise((resolve, reject) => {
+            const insertQuery = `
+              INSERT INTO coins (coinId, coinStatus, latitude, longitude, message, cashAmount, creationDate, expirationDate, redeemedDate, userSender, userRecipient)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `;
+            const coinId = Math.floor(Math.random() * 900) + 100;
+            const creationDate = new Date().toISOString();
+            db.run(
+              insertQuery,
+              [
+                coinId,
+                1,
+                latitude,
+                longitude,
+                message,
+                cashAmount,
+                creationDate,
+                expirationDate,
+                null,
+                JSON.stringify({ userId: req.user, userImgUrl: sender.imgUrl }),
+                JSON.stringify({ userId: user.userId, userImgUrl: user.imgUrl, firstName: user.firstName, lastName: user.lastName }),
+              ],
+              function (err) {
+                if (err) reject(err);
+                resolve({
                   coinId,
-                  1,
+                  coinStatus: 1,
                   latitude,
                   longitude,
                   message,
                   cashAmount,
                   creationDate,
                   expirationDate,
-                  null,
-                  JSON.stringify({ userId: req.user, userImgUrl: sender.imgUrl }),
-                  JSON.stringify({ userId: user.userId, userImgUrl: user.imgUrl, firstName: user.firstName, lastName: user.lastName }),
-                ],
-                function (err) {
-                  if (err) reject(err);
-                  resolve({
-                    coinId,
-                    coinStatus: 1,
-                    latitude,
-                    longitude,
-                    message,
-                    cashAmount,
-                    creationDate,
-                    expirationDate,
-                    redeemedDate: null,
-                    userSender: { userId: req.user, userImgUrl: sender.imgUrl },
-                    userRecipient: { userId: user.userId, userImgUrl: user.imgUrl, firstName: user.firstName, lastName: user.lastName },
-                  });
-                }
-              );
-            });
-            createdCoins.push(coin);
-          }
+                  redeemedDate: null,
+                  userSender: { userId: req.user, userImgUrl: sender.imgUrl },
+                  userRecipient: { userId: user.userId, userImgUrl: user.imgUrl, firstName: user.firstName, lastName: user.lastName },
+                });
+              }
+            );
+          });
+          createdCoins.push(coin);
         }
       }
-  
-      if (createdCoins.length > 0) {
-        return res.status(201).json({
-          event: "THROW_SUCCESS",
-          message: "Coin successfully thrown.",
-          data: createdCoins,
-        });
-      } else {
-        return res.status(400).json({
-          event: "INVALID_PARAMETERS",
-          message: "No valid users found or coins already exist at this location.",
-        });
-      }
-    } catch (err) {
-      console.error("Error:", err);
-      return res.status(500).json({
-        event: "INTERNAL_SERVER_ERROR",
-        message: "An unexpected error occurred. Please try again later.",
+    }
+
+    if (createdCoins.length > 0) {
+      return res.status(201).json({
+        event: "THROW_SUCCESS",
+        message: "Coin successfully thrown.",
+        data: createdCoins,
+      });
+    } else {
+      return res.status(400).json({
+        event: "INVALID_PARAMETERS",
+        message: "No valid users found or coins already exist at this location.",
       });
     }
-  });
+  } catch (err) {
+    console.error("Error:", err);
+    return res.status(500).json({
+      event: "INTERNAL_SERVER_ERROR",
+      message: "An unexpected error occurred. Please try again later.",
+    });
+  }
+});
+
   
   
 
