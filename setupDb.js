@@ -1,11 +1,12 @@
-import {transactions} from './mock-transactions.js';
-import {coinsDb} from './mock-coins.js';
-import {users} from './mock-users.js';
-import sqlite3 from 'sqlite3'; 
+import { transactions } from './mock-transactions.js';
+import { coinsDb } from './mock-coins.js';
+import { users } from './mock-users.js';
+import sqlite3 from 'sqlite3';
 
 const db = new sqlite3.Database('./arkMockDb.db');
 
-const createTablesSQL = ` CREATE TABLE IF NOT EXISTS coins (
+const createTablesSQL = `
+    CREATE TABLE IF NOT EXISTS coins (
       coinId INTEGER PRIMARY KEY AUTOINCREMENT,
       coinStatus INTEGER,
       latitude TEXT,
@@ -20,95 +21,119 @@ const createTablesSQL = ` CREATE TABLE IF NOT EXISTS coins (
     );
 
     CREATE TABLE IF NOT EXISTS users (
-       userId TEXT PRIMARY KEY,
-        firstName TEXT,
-        lastName TEXT,
-        imgUrl TEXT,
-        deviceInfo TEXT
+      userId TEXT PRIMARY KEY,
+      firstName TEXT,
+      lastName TEXT,
+      imgUrl TEXT,
+      deviceInfo TEXT
     );
 
-       CREATE TABLE IF NOT EXISTS wallet (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        userId TEXT,
-        cryptoBalance TEXT,
-        cashBalance TEXT
+    CREATE TABLE IF NOT EXISTS wallet (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      userId TEXT,
+      cryptoBalance TEXT,
+      cashBalance TEXT
     );
 
-     CREATE TABLE IF NOT EXISTS transactions (
+    CREATE TABLE IF NOT EXISTS transactions (
       transactionId INTEGER PRIMARY KEY AUTOINCREMENT,
       interactionType INTEGER,
-      amount TEXT,  
+      amount TEXT,
       coinStatus INTEGER,
-      expirationDate DATETIME,  
-      capturedDate DATETIME,  
-      createDate DATETIME,  
-      user TEXT
+      expirationDate DATETIME,
+      capturedDate DATETIME,
+      createDate DATETIME,
+      user TEXT,
+      relatedUser TEXT
     );
-  `
+`;
 
-  db.exec(createTablesSQL, (err) => {
-    if (err) {
-        console.error("Error creating tables:", err);
-    } else {
-        preloadData(); // Insert preloaded data after table creation
-    }
+db.exec(createTablesSQL, (err) => {
+  if (err) {
+    console.error('Error creating tables:', err);
+  } else {
+    preloadData(); // Insert preloaded data after table creation
+  }
 });
 
 const preloadData = () => {
-  
   // Insert users data
-  users.forEach(user => {
-      const insertUserSQL = `
+  users.forEach((user) => {
+    const insertUserSQL = `
       INSERT OR IGNORE INTO users (userId, firstName, lastName, imgUrl, deviceInfo) 
-      VALUES (?, ?, ?,?,?)
-      `;
-      db.run(insertUserSQL, [user.userId, user.firstName, user.lastName, user.imgUrl, JSON.stringify(user.deviceInfo)], (err) => {
-          if (err) {
-              console.error("Error inserting user:", err);
-          }
-      });
+      VALUES (?, ?, ?, ?, ?)
+    `;
+    db.run(insertUserSQL, [user.userId, user.firstName, user.lastName, user.imgUrl, JSON.stringify(user.deviceInfo)], (err) => {
+      if (err) {
+        console.error('Error inserting user:', err);
+      }
+    });
 
-      const insertBalanceSQL = `INSERT OR IGNORE INTO wallet (userId, cryptoBalance, cashBalance) VALUES(?,?,?)`;
-      db.run(insertBalanceSQL, [user.userId, 100, 100], (err) => {
-        if (err) {
-            console.error("Error inserting user balance:", err);
-        }
+    const insertBalanceSQL = `INSERT OR IGNORE INTO wallet (userId, cryptoBalance, cashBalance) VALUES(?,?,?)`;
+    db.run(insertBalanceSQL, [user.userId, 100, 100], (err) => {
+      if (err) {
+        console.error('Error inserting user balance:', err);
+      }
     });
   });
 
   // Insert transactions data
-  transactions.forEach(transaction => {
-      const insertTransactionSQL = `
+  transactions.forEach((transaction) => {
+    const insertTransactionSQL = `
       INSERT OR IGNORE INTO transactions (
-          transactionId, interactionType, amount, coinStatus, expirationDate, capturedDate, createDate, user
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      `;
-      db.run(insertTransactionSQL, [
-          transaction.transactionId, 
-          transaction.interactionType, 
-          transaction.amount, 
-          transaction.coinStatus,
-          transaction.expirationDate,
-          transaction.capturedDate,
-          transaction.createDate,
-          JSON.stringify(transaction.user)
-      ], (err) => {
-          if (err) {
-              console.error("Error inserting transaction:", err);
-          } 
-      });
+        transactionId, interactionType, amount, coinStatus, expirationDate, capturedDate, createDate, user, relatedUser
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+    db.run(
+      insertTransactionSQL,
+      [
+        transaction.transactionId,
+        transaction.interactionType,
+        transaction.amount,
+        transaction.coinStatus,
+        transaction.expirationDate,
+        transaction.capturedDate,
+        transaction.createDate,
+        JSON.stringify(transaction.user),
+        transaction.relatedUser ? JSON.stringify(transaction.relatedUser) : null, // Ensure relatedUser is handled
+      ],
+      (err) => {
+        if (err) {
+          console.error('Error inserting transaction:', err);
+        }
+      }
+    );
   });
 
-  coinsDb.forEach(coin => {
+  // Insert coins data
+  coinsDb.forEach((coin) => {
     const insertCoinSQL = `
-    INSERT OR IGNORE INTO coins (coinId, coinStatus, latitude, longitude, message, cashAmount, creationDate, expirationDate, redeemedDate, userSender, userRecipient) 
-    VALUES (?, ?, ?, ?,?,?,?,?,?,?,?)
+      INSERT OR IGNORE INTO coins (
+        coinId, coinStatus, latitude, longitude, message, cashAmount, creationDate, expirationDate, redeemedDate, userSender, userRecipient
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
-    db.run(insertCoinSQL, [coin.coinId, coin.coinStatus, coin.latitude, coin.longitude, coin.message, coin.cashAmount, coin.creationDate, coin.expirationDate, coin.redeemedDate, JSON.stringify(coin.userSender), JSON.stringify(coin.userRecipient)], (err) => {
+    db.run(
+      insertCoinSQL,
+      [
+        coin.coinId,
+        coin.coinStatus,
+        coin.latitude,
+        coin.longitude,
+        coin.message,
+        coin.cashAmount,
+        coin.creationDate,
+        coin.expirationDate,
+        coin.redeemedDate,
+        JSON.stringify(coin.userSender),
+        JSON.stringify(coin.userRecipient),
+      ],
+      (err) => {
         if (err) {
-            console.error("Error inserting coin:", err);
-        } 
-    });
-});
+          console.error('Error inserting coin:', err);
+        }
+      }
+    );
+  });
 };
+
 export default db;

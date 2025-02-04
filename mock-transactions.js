@@ -11,6 +11,12 @@ export const transactions = [
         userId: "796200b5-2061-4fd2-8b7b-7d8a200ad38d",
         userName: "pchaidez",
         userImgUrl: "https://example.com/images/alice_johnson.jpg"
+},
+  relatedUser: {
+    userId: "796200b5-2061-4fd2-8b7b-7d8a200ad38d",
+    firstName: "Roney",
+    lastName: "Lopez",
+    imgUrl: "https://cdn.pixabay.com/photo/2015/01/22/15/13/businessman-607834_1280.png"
       }
     },
     {
@@ -25,6 +31,12 @@ export const transactions = [
           userId: "796200b5-2061-4fd2-8b7b-7d8a200ad38d",
           userName: "pchaidez",
           userImgUrl: "https://example.com/images/alice_johnson.jpg"
+},
+  relatedUser: {
+    userId: "796200b5-2061-4fd2-8b7b-7d8a200ad38d",
+    firstName: "Roney",
+    lastName: "Lopez",
+    imgUrl: "https://cdn.pixabay.com/photo/2015/01/22/15/13/businessman-607834_1280.png"
         }
       },
       {
@@ -39,6 +51,12 @@ export const transactions = [
           userId: "796200b5-2061-4fd2-8b7b-7d8a200ad38d",
           userName: "pchaidez",
           userImgUrl: "https://example.com/images/alice_johnson.jpg"
+},
+  relatedUser: {
+    userId: "796200b5-2061-4fd2-8b7b-7d8a200ad38d",
+    firstName: "Roney",
+    lastName: "Lopez",
+    imgUrl: "https://cdn.pixabay.com/photo/2015/01/22/15/13/businessman-607834_1280.png"
         }
       },
       {
@@ -53,6 +71,12 @@ export const transactions = [
           userId: "dd3427fe-4117-4c74-b4ba-57f526236d6d",
           userName: "pchaidez",
           userImgUrl: "https://example.com/images/alice_johnson.jpg"
+},
+  relatedUser: {
+    userId: "796200b5-2061-4fd2-8b7b-7d8a200ad38d",
+    firstName: "Roney",
+    lastName: "Lopez",
+    imgUrl: "https://cdn.pixabay.com/photo/2015/01/22/15/13/businessman-607834_1280.png"
         }
       },
       {
@@ -67,6 +91,12 @@ export const transactions = [
           userId: "dd3427fe-4117-4c74-b4ba-57f526236d6d",
           userName: "pchaidez",
           userImgUrl: "https://example.com/images/alice_johnson.jpg"
+},
+  relatedUser: {
+    userId: "796200b5-2061-4fd2-8b7b-7d8a200ad38d",
+    firstName: "Roney",
+    lastName: "Lopez",
+    imgUrl: "https://cdn.pixabay.com/photo/2015/01/22/15/13/businessman-607834_1280.png"
         }
       },
       {
@@ -81,6 +111,12 @@ export const transactions = [
           userId: "dd3427fe-4117-4c74-b4ba-57f526236d6d",
           userName: "pchaidez",
           userImgUrl: "https://example.com/images/alice_johnson.jpg"
+},
+  relatedUser: {
+    userId: "796200b5-2061-4fd2-8b7b-7d8a200ad38d",
+    firstName: "Roney",
+    lastName: "Lopez",
+    imgUrl: "https://cdn.pixabay.com/photo/2015/01/22/15/13/businessman-607834_1280.png"
         }
       },
       {
@@ -95,6 +131,12 @@ export const transactions = [
           userId: "dd3427fe-4117-4c74-b4ba-57f526236d6d",
           userName: "pchaidez",
           userImgUrl: "https://example.com/images/alice_johnson.jpg"
+},
+  relatedUser: {
+    userId: "796200b5-2061-4fd2-8b7b-7d8a200ad38d",
+    firstName: "Roney",
+    lastName: "Lopez",
+    imgUrl: "https://cdn.pixabay.com/photo/2015/01/22/15/13/businessman-607834_1280.png"
         }
       },
       {
@@ -109,6 +151,12 @@ export const transactions = [
           userId: "cdcc5a57-6927-4736-99de-b1c78fba0e23",
           userName: "pchaidez",
           userImgUrl: "https://example.com/images/alice_johnson.jpg"
+},
+  relatedUser: {
+    userId: "796200b5-2061-4fd2-8b7b-7d8a200ad38d",
+    firstName: "Roney",
+    lastName: "Lopez",
+    imgUrl: "https://cdn.pixabay.com/photo/2015/01/22/15/13/businessman-607834_1280.png"
         }
       },
       {
@@ -123,6 +171,12 @@ export const transactions = [
           userId: "cdcc5a57-6927-4736-99de-b1c78fba0e23",
           userName: "pchaidez",
           userImgUrl: "https://example.com/images/alice_johnson.jpg"
+},
+  relatedUser: {
+    userId: "796200b5-2061-4fd2-8b7b-7d8a200ad38d",
+    firstName: "Roney",
+    lastName: "Lopez",
+    imgUrl: "https://cdn.pixabay.com/photo/2015/01/22/15/13/businessman-607834_1280.png"
         }
       },
       {
@@ -137,6 +191,12 @@ export const transactions = [
           userId: "cdcc5a57-6927-4736-99de-b1c78fba0e23",
           userName: "pchaidez",
           userImgUrl: "https://example.com/images/alice_johnson.jpg"
+},
+  relatedUser: {
+    userId: "796200b5-2061-4fd2-8b7b-7d8a200ad38d",
+    firstName: "Roney",
+    lastName: "Lopez",
+    imgUrl: "https://cdn.pixabay.com/photo/2015/01/22/15/13/businessman-607834_1280.png"
         }
       },
       {
@@ -151,6 +211,12 @@ export const transactions = [
           userId: "cdcc5a57-6927-4736-99de-b1c78fba0e23",
           userName: "pchaidez",
           userImgUrl: "https://example.com/images/alice_johnson.jpg"
+},
+  relatedUser: {
+    userId: "796200b5-2061-4fd2-8b7b-7d8a200ad38d",
+    firstName: "Roney",
+    lastName: "Lopez",
+    imgUrl: "https://cdn.pixabay.com/photo/2015/01/22/15/13/businessman-607834_1280.png"
         }
       },
       {
@@ -165,6 +231,12 @@ export const transactions = [
           userId: "cdcc5a57-6927-4736-99de-b1c78fba0e23",
           userName: "pchaidez",
           userImgUrl: "https://example.com/images/alice_johnson.jpg"
+},
+  relatedUser: {
+    userId: "796200b5-2061-4fd2-8b7b-7d8a200ad38d",
+    firstName: "Roney",
+    lastName: "Lopez",
+    imgUrl: "https://cdn.pixabay.com/photo/2015/01/22/15/13/businessman-607834_1280.png"
         }
       },
       {
@@ -179,6 +251,12 @@ export const transactions = [
           userId: "cdcc5a57-6927-4736-99de-b1c78fba0e23",
           userName: "pchaidez",
           userImgUrl: "https://example.com/images/alice_johnson.jpg"
+},
+  relatedUser: {
+    userId: "796200b5-2061-4fd2-8b7b-7d8a200ad38d",
+    firstName: "Roney",
+    lastName: "Lopez",
+    imgUrl: "https://cdn.pixabay.com/photo/2015/01/22/15/13/businessman-607834_1280.png"
         }
       },
       {
@@ -193,6 +271,12 @@ export const transactions = [
           userId: "cdcc5a57-6927-4736-99de-b1c78fba0e23",
           userName: "pchaidez",
           userImgUrl: "https://example.com/images/alice_johnson.jpg"
+},
+  relatedUser: {
+    userId: "796200b5-2061-4fd2-8b7b-7d8a200ad38d",
+    firstName: "Roney",
+    lastName: "Lopez",
+    imgUrl: "https://cdn.pixabay.com/photo/2015/01/22/15/13/businessman-607834_1280.png"
         }
       },
       {
@@ -207,6 +291,12 @@ export const transactions = [
           userId: "cdcc5a57-6927-4736-99de-b1c78fba0e23",
           userName: "pchaidez",
           userImgUrl: "https://example.com/images/alice_johnson.jpg"
+},
+  relatedUser: {
+    userId: "796200b5-2061-4fd2-8b7b-7d8a200ad38d",
+    firstName: "Roney",
+    lastName: "Lopez",
+    imgUrl: "https://cdn.pixabay.com/photo/2015/01/22/15/13/businessman-607834_1280.png"
         }
       },
       {
@@ -221,6 +311,12 @@ export const transactions = [
           userId: "cdcc5a57-6927-4736-99de-b1c78fba0e23",
           userName: "pchaidez",
           userImgUrl: "https://example.com/images/alice_johnson.jpg"
+},
+  relatedUser: {
+    userId: "796200b5-2061-4fd2-8b7b-7d8a200ad38d",
+    firstName: "Roney",
+    lastName: "Lopez",
+    imgUrl: "https://cdn.pixabay.com/photo/2015/01/22/15/13/businessman-607834_1280.png"
         }
       },
       {
@@ -235,6 +331,12 @@ export const transactions = [
           userId: "cdcc5a57-6927-4736-99de-b1c78fba0e23",
           userName: "pchaidez",
           userImgUrl: "https://example.com/images/alice_johnson.jpg"
+},
+  relatedUser: {
+    userId: "796200b5-2061-4fd2-8b7b-7d8a200ad38d",
+    firstName: "Roney",
+    lastName: "Lopez",
+    imgUrl: "https://cdn.pixabay.com/photo/2015/01/22/15/13/businessman-607834_1280.png"
         }
       },
       {
@@ -249,6 +351,12 @@ export const transactions = [
           userId: "cdcc5a57-6927-4736-99de-b1c78fba0e23",
           userName: "pchaidez",
           userImgUrl: "https://example.com/images/alice_johnson.jpg"
+},
+  relatedUser: {
+    userId: "796200b5-2061-4fd2-8b7b-7d8a200ad38d",
+    firstName: "Roney",
+    lastName: "Lopez",
+    imgUrl: "https://cdn.pixabay.com/photo/2015/01/22/15/13/businessman-607834_1280.png"
         }
       },
       {
@@ -263,6 +371,12 @@ export const transactions = [
           userId: "cdcc5a57-6927-4736-99de-b1c78fba0e23",
           userName: "pchaidez",
           userImgUrl: "https://example.com/images/alice_johnson.jpg"
+},
+  relatedUser: {
+    userId: "796200b5-2061-4fd2-8b7b-7d8a200ad38d",
+    firstName: "Roney",
+    lastName: "Lopez",
+    imgUrl: "https://cdn.pixabay.com/photo/2015/01/22/15/13/businessman-607834_1280.png"
         }
       },
       {
@@ -277,6 +391,12 @@ export const transactions = [
           userId: "cdcc5a57-6927-4736-99de-b1c78fba0e23",
           userName: "pchaidez",
           userImgUrl: "https://example.com/images/alice_johnson.jpg"
+},
+  relatedUser: {
+    userId: "796200b5-2061-4fd2-8b7b-7d8a200ad38d",
+    firstName: "Roney",
+    lastName: "Lopez",
+    imgUrl: "https://cdn.pixabay.com/photo/2015/01/22/15/13/businessman-607834_1280.png"
         }
       },
       {
@@ -291,6 +411,12 @@ export const transactions = [
           userId: "cdcc5a57-6927-4736-99de-b1c78fba0e23",
           userName: "pchaidez",
           userImgUrl: "https://example.com/images/alice_johnson.jpg"
+},
+  relatedUser: {
+    userId: "796200b5-2061-4fd2-8b7b-7d8a200ad38d",
+    firstName: "Roney",
+    lastName: "Lopez",
+    imgUrl: "https://cdn.pixabay.com/photo/2015/01/22/15/13/businessman-607834_1280.png"
         }
       }
       
