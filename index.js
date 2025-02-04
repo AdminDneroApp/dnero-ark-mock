@@ -726,6 +726,11 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
                   INSERT INTO transactions (transactionId, interactionType, amount, coinStatus, expirationDate, capturedDate, createDate, user, relatedUser)
                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 `;
+
+                console.log(`[DEBUG] Inserting transaction: ${transactionId}, Type: ${interactionType}`);
+                console.log(`[DEBUG] User Details:`, userDetails);
+                console.log(`[DEBUG] Related User Details:`, relatedUserDetails);
+                
                 db.run(
                   query,
                   [
