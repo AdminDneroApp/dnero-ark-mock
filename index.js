@@ -763,23 +763,30 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
             Promise.all([
               transactionInsert(senderTransactionId, 0, senderDetails, recipientDetails), // Sender log
               transactionInsert(recipientTransactionId, 1, recipientDetails, senderDetails), // Recipient log
-            ])
+          ])
               .then(() => {
-                // Include firstName and lastName in the response
-                const response = {
-                  ...updatedCoin,
-                  sender: senderDetails,
-                  recipient: recipientDetails,
-                };
-  
-                return res.status(200).json(response);
+                  // Add firstName and lastName to userSender and userRecipient
+                  if (updatedCoin.userSender) {
+                      updatedCoin.userSender.firstName = senderDetails.firstName;
+                      updatedCoin.userSender.lastName = senderDetails.lastName;
+                  }
+          
+                  if (updatedCoin.userRecipient) {
+                      updatedCoin.userRecipient.firstName = recipientDetails.firstName;
+                      updatedCoin.userRecipient.lastName = recipientDetails.lastName;
+                  }
+          
+                  // Remove sender and recipient objects, keep updatedCoin as final response
+                  return res.status(200).json(updatedCoin);
               })
               .catch((err) => {
-                return res.status(500).json({
-                  event: "INTERNAL_SERVER_ERROR",
-                  message: "Failed to record transactions. Please try again later.",
-                });
+                  console.error(`[ERROR] Error inserting transactions: ${err.message}`);
+                  return res.status(500).json({
+                      event: "INTERNAL_SERVER_ERROR",
+                      message: "Failed to record transactions. Please try again later.",
+                  });
               });
+          
           });
         });
       });
