@@ -807,7 +807,7 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
   
     const query = `SELECT * FROM coins WHERE coinId = ?`;
   
-    db.get(query, [coinId], (err, coin) => {
+    db.get(query, [coinId], async (err, coin) => {
       if (err) {
         console.error("Error querying coin:", err);
         return res.status(500).json({
@@ -830,6 +830,50 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
         });
       }
   
+      let senderId = '';
+      let receiverId = '';
+  
+      try {
+        if (coin.userRecipient) {
+          coin.userRecipient = JSON.parse(coin.userRecipient);
+          receiverId = coin.userRecipient.userId;
+        }
+        if (coin.userSender) {
+          coin.userSender = JSON.parse(coin.userSender);
+          senderId = coin.userSender.userId;
+        }
+      } catch (err) {
+        return res.status(500).json({
+          event: "INTERNAL_SERVER_ERROR",
+          message: "Failed to parse user details. Please try again later.",
+        });
+      }
+  
+      // Check sender's balance before processing redemption
+      try {
+        const senderWallet = await new Promise((resolve, reject) => {
+          const walletQuery = `SELECT cashBalance FROM wallet WHERE userId = ?`;
+          db.get(walletQuery, [senderId], (err, row) => {
+            if (err) reject(err);
+            else resolve(row);
+          });
+        });
+  
+        if (!senderWallet || parseFloat(senderWallet.cashBalance) < parseFloat(coin.cashAmount)) {
+          return res.status(400).json({
+            event: "INSUFFICIENT_FUNDS",
+            message: "Coin cannot be collected right now.",
+          });
+        }
+      } catch (err) {
+        console.error("Error checking sender's balance:", err);
+        return res.status(500).json({
+          event: "INTERNAL_SERVER_ERROR",
+          message: "Failed to verify sender's balance. Please try again later.",
+        });
+      }
+  
+      // If balance is sufficient, proceed with redemption
       const redeemedDate = new Date().toISOString();
       const updateQuery = `
         UPDATE coins
@@ -847,18 +891,6 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
         }
   
         const updatedCoin = { ...coin, redeemedDate, coinStatus: 2 };
-  
-        let senderId = '';
-        let receiverId = '';
-  
-        if (updatedCoin.userRecipient) {
-          updatedCoin.userRecipient = JSON.parse(updatedCoin.userRecipient);
-          receiverId = updatedCoin.userRecipient.userId;
-        }
-        if (updatedCoin.userSender) {
-          updatedCoin.userSender = JSON.parse(updatedCoin.userSender);
-          senderId = updatedCoin.userSender.userId;
-        }
   
         const walletUpdateQuery = `
           UPDATE wallet
@@ -969,18 +1001,19 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
       });
     });
   });
+  
     
   
    // drops a new coin for a given user based on their userId or phone number
 app.post('/DneroArk/coins/Drop', checkAccessToken, async (req, res) => {
   const { latitude, longitude, message, cashAmount, expirationDate, userRecipientId, userRecipientPhone } = req.body;
 
-  if (!latitude || !longitude || !cashAmount || !expirationDate) {
-    return res.status(400).json({
-      event: "INVALID_PARAMETERS",
-      message: "One or more required parameters are missing or invalid.",
-    });
-  }
+  // if (!latitude || !longitude || !cashAmount || !expirationDate) {
+  //   return res.status(400).json({
+  //     event: "INVALID_PARAMETERS",
+  //     message: "One or more required parameters are missing or invalid.",
+  //   });
+  // }
 
   try {
     const sender = await new Promise((resolve, reject) => {
@@ -1007,20 +1040,11 @@ app.post('/DneroArk/coins/Drop', checkAccessToken, async (req, res) => {
       });
     });
 
-    const pendingCoins = await new Promise((resolve, reject) => {
-      const pendingQuery = `SELECT SUM(cashAmount) AS totalPending FROM coins WHERE userSender LIKE ? AND coinStatus = 1`;
-      db.get(pendingQuery, [`%${req.user}%`], (err, row) => {
-        if (err) reject(err);
-        else resolve(row ? row.totalPending || 0 : 0);
-      });
-    });
 
-    const floatBalance = parseFloat(senderWallet.cashBalance) - parseFloat(pendingCoins);
-
-    if (floatBalance < parseFloat(cashAmount)) {
+    if (senderWallet < parseFloat(cashAmount)) {
       return res.status(400).json({
         event: "INSUFFICIENT_BALANCE",
-        message: "Your balance, including pending coins, is not sufficient to drop this coin.",
+        message: "Your balance is not sufficient to drop this coin.",
       });
     }
 
