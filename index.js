@@ -859,10 +859,21 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
           });
         });
 
-        console.log("senderWallet: " + senderWallet)
-        console.log("sender" + senderId)
-  
-        if (!senderWallet || parseFloat(senderWallet.cashBalance) < parseFloat(coin.cashAmount)) {
+        if (!senderWallet) {
+          console.error("Sender wallet not found:", senderId);
+          return res.status(400).json({
+            event: "INSUFFICIENT_FUNDS",
+            message: "Coin cannot be collected right now.",
+          });
+        }
+
+        const senderBalance = parseFloat(senderWallet.cashBalance);
+        const coinAmount = parseFloat(coin.cashAmount);
+
+        console.log(`[CHECK] Sender Balance: ${senderBalance}, Coin Amount: ${coinAmount}`);
+
+        if (senderBalance < coinAmount) {
+          console.error("[CHECK] Insufficient funds! Transaction blocked.");
           return res.status(400).json({
             event: "INSUFFICIENT_FUNDS",
             message: "Coin cannot be collected right now.",
@@ -875,6 +886,7 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
           message: "Failed to verify sender's balance. Please try again later.",
         });
       }
+
   
       // If balance is sufficient, proceed with redemption
       const redeemedDate = new Date().toISOString();
