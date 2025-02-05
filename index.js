@@ -693,7 +693,6 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
 
         // Check sender's balance before processing redemption
         try {
-          console.log("Entro a sender Balance: "+ senderId)
           const senderWallet = new Promise((resolve, reject) => {
             const walletQuery = `SELECT cashBalance FROM wallet WHERE userId = ?`;
             db.get(walletQuery, [senderId], (err, row) => {
@@ -768,6 +767,12 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
             });
   
             const transactionInsert = (transactionId, interactionType, userDetails, relatedUserDetails) => {
+              console.log("Inserting transaction values are"+ {
+                transactionId,
+                interactionType,
+                userDetails,
+                relatedUserDetails,
+              })
               return new Promise((resolve, reject) => {
                 const query = `
                   INSERT INTO transactions (transactionId, interactionType, amount, coinStatus, expirationDate, capturedDate, createDate, user, relatedUser)
