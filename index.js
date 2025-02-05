@@ -858,6 +858,9 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
             else resolve(row);
           });
         });
+
+        console.log("senderWallet: " + senderWallet)
+        console.log("sender" + senderId)
   
         if (!senderWallet || parseFloat(senderWallet.cashBalance) < parseFloat(coin.cashAmount)) {
           return res.status(400).json({
@@ -1008,12 +1011,12 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
 app.post('/DneroArk/coins/Drop', checkAccessToken, async (req, res) => {
   const { latitude, longitude, message, cashAmount, expirationDate, userRecipientId, userRecipientPhone } = req.body;
 
-  // if (!latitude || !longitude || !cashAmount || !expirationDate) {
-  //   return res.status(400).json({
-  //     event: "INVALID_PARAMETERS",
-  //     message: "One or more required parameters are missing or invalid.",
-  //   });
-  // }
+  if (!latitude || !longitude || !cashAmount || !expirationDate) {
+    return res.status(400).json({
+      event: "INVALID_PARAMETERS",
+      message: "One or more required parameters are missing or invalid.",
+    });
+  }
 
   try {
     const sender = await new Promise((resolve, reject) => {
