@@ -766,13 +766,14 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
               }
             });
   
-            console.log("Inserting transaction values are:", JSON.stringify({
-              transactionId,
-              interactionType,
-              userDetails,
-              relatedUserDetails,
-            }, null, 2));
-            
+            const transactionInsert = (transactionId, interactionType, userDetails, relatedUserDetails) => {
+              console.log("Inserting transaction values are:", JSON.stringify({
+                transactionId,
+                interactionType,
+                userDetails,
+                relatedUserDetails,
+              }, null, 2));
+              
               return new Promise((resolve, reject) => {
                 const query = `
                   INSERT INTO transactions (transactionId, interactionType, amount, coinStatus, expirationDate, capturedDate, createDate, user, relatedUser)
