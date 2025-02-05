@@ -136,7 +136,6 @@ app.post('/DneroArk/user/contacts', checkAccessToken, (req, res) => {
 //Returns the balance of a user's crypto and cash balance from their wallet
 app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
   const userId = req.params.userId; // Correctly access the 'id' parameter
-  console.log("userId: " + userId);
 
   // Check if userId is missing or invalid (400 Bad Request)
   if (!userId) {
@@ -621,7 +620,7 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
   });
 
   //
-  app.post('/DneroArk/coins/redeem/:coinId', checkAccessToken, (req, res) => {
+  app.post('/DneroArk/coins/redeem/:coinId', checkAccessToken,  (req, res) => {
     const coinId = parseInt(req.params.coinId, 10);
   
     if (isNaN(coinId)) {
@@ -662,7 +661,7 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
         WHERE coinId = ?
       `;
   
-      db.run(updateQuery, [redeemedDate, 2, coinId], function (err) {
+      db.run(updateQuery, [redeemedDate, 2, coinId], async function (err) {
         if (err) {
           return res.status(500).json({
             event: "INTERNAL_SERVER_ERROR",
@@ -693,25 +692,22 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
 
         // Check sender's balance before processing redemption
         try {
-          const senderWallet = new Promise((resolve, reject) => {
-            const walletQuery = `SELECT cashBalance FROM wallet WHERE userId = ?`;
-            db.get(walletQuery, [senderId], (err, row) => {
-              if (err) reject(err);
-              else resolve(row);
-            });
-          });
-
-          if (!senderWallet) {
-            console.error("Sender wallet not found:", senderId);
+          const senderWallet = await queryDatabase(
+            `SELECT cashBalance FROM wallet WHERE userId = ?`,
+            [senderId]
+          );
+        
+          if (!senderWallet || senderWallet.cashBalance === undefined) {
+            console.error("Sender wallet not found or cashBalance is undefined:", senderId);
             return res.status(400).json({
               event: "INSUFFICIENT_FUNDS",
               message: "Coin cannot be collected right now.",
             });
           }
-
+        
           const senderBalance = parseFloat(senderWallet.cashBalance);
           const coinAmount = parseFloat(coin.cashAmount);
-
+        
           if (senderBalance < coinAmount) {
             console.error("[CHECK] Insufficient funds! Transaction blocked.");
             return res.status(400).json({
@@ -726,6 +722,8 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
             message: "Failed to verify sender's balance. Please try again later.",
           });
         }
+        
+        
   
         const walletUpdateQuery = `
           UPDATE wallet
