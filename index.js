@@ -620,7 +620,7 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
   });
 
   //
-  app.post('/DneroArk/coins/redeem/:coinId', checkAccessToken,  (req, res) => {
+  app.post('/DneroArk/coins/redeem/:coinId', checkAccessToken, async (req, res) => {
     const coinId = parseInt(req.params.coinId, 10);
   
     if (isNaN(coinId)) {
@@ -692,10 +692,15 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
 
         // Check sender's balance before processing redemption
         try {
-          const senderWallet = await queryDatabase(
-            `SELECT cashBalance FROM wallet WHERE userId = ?`,
-            [senderId]
-          );
+          const senderWallet = await new Promise((resolve, reject) => {
+            const walletQuery = `SELECT cashBalance FROM wallet WHERE userId = ?`;
+            db.get(walletQuery, [senderId], (err, row) => {
+              if (err) reject(err);
+              else resolve(row);
+            });
+          });
+
+          console.log("Sender wallet:", senderWallet);
         
           if (!senderWallet || senderWallet.cashBalance === undefined) {
             console.error("Sender wallet not found or cashBalance is undefined:", senderId);
@@ -722,7 +727,6 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
             message: "Failed to verify sender's balance. Please try again later.",
           });
         }
-        
         
   
         const walletUpdateQuery = `
