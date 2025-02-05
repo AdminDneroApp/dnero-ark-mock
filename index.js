@@ -795,6 +795,7 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
 
   // sets the redeem date and status on the given coin
   app.post('/DneroArk/coins/redeem/:coinId', checkAccessToken, (req, res) => {
+    console.log("redeem coin")
     const coinId = parseInt(req.params.coinId, 10);
   
     // Validate coinId
@@ -834,6 +835,7 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
       let receiverId = '';
   
       try {
+        console.log("coin: "+ coin)
         if (coin.userRecipient) {
           coin.userRecipient = JSON.parse(coin.userRecipient);
           receiverId = coin.userRecipient.userId;
@@ -851,6 +853,7 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
   
       // Check sender's balance before processing redemption
       try {
+        console.log("Entro a sender Balance: "+ senderId)
         const senderWallet = await new Promise((resolve, reject) => {
           const walletQuery = `SELECT cashBalance FROM wallet WHERE userId = ?`;
           db.get(walletQuery, [senderId], (err, row) => {
