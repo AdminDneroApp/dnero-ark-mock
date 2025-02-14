@@ -917,15 +917,6 @@ app.post('/DneroArk/coins/Drop', checkAccessToken, async (req, res) => {
       });
 
       if (user) {
-        const existingCoin = await new Promise((resolve, reject) => {
-          const checkCoinQuery = `SELECT * FROM coins WHERE latitude = ? AND longitude = ? AND userRecipient LIKE ? AND coinStatus = 1`;
-          db.get(checkCoinQuery, [latitude, longitude, `%${userId}%`], (err, row) => {
-            if (err) reject(err);
-            else resolve(row);
-          });
-        });
-
-        if (!existingCoin) {
           const coin = await new Promise((resolve, reject) => {
             const insertQuery = `
               INSERT INTO coins (coinId, coinStatus, latitude, longitude, message, cashAmount, creationDate, expirationDate, redeemedDate, userSender, userRecipient)
@@ -967,7 +958,7 @@ app.post('/DneroArk/coins/Drop', checkAccessToken, async (req, res) => {
             );
           });
           createdCoins.push(coin);
-        }
+        
       }
     }
 
@@ -980,7 +971,7 @@ app.post('/DneroArk/coins/Drop', checkAccessToken, async (req, res) => {
     } else {
       return res.status(400).json({
         event: "INVALID_PARAMETERS",
-        message: "No valid users found or coins already exist at this location.",
+        message: "No valid users found",
       });
     }
   } catch (err) {
