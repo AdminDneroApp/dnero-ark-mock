@@ -620,7 +620,7 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
   });
 
   //
-  app.post('/DneroArk/coins/redeem/:coinId', checkAccessToken, async (req, res) => {
+  app.post("/DneroArk/coins/redeem/:coinId", checkAccessToken, async (req, res) => {
     const coinId = parseInt(req.params.coinId, 10);
   
     if (isNaN(coinId)) {
@@ -671,8 +671,8 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
   
         const updatedCoin = { ...coin, redeemedDate, coinStatus: 2 };
   
-        let senderId = '';
-        let receiverId = '';
+        let senderId = "";
+        let receiverId = "";
   
         try {
           if (updatedCoin.userRecipient) {
@@ -689,7 +689,7 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
             message: "Failed to parse user details. Please try again later.",
           });
         }
-
+  
         // Check sender's balance before processing redemption
         try {
           const senderWallet = await new Promise((resolve, reject) => {
@@ -699,20 +699,23 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
               else resolve(row);
             });
           });
-
+  
           console.log("Sender wallet:", senderWallet);
-        
+  
           if (!senderWallet || senderWallet.cashBalance === undefined) {
-            console.error("Sender wallet not found or cashBalance is undefined:", senderId);
+            console.error(
+              "Sender wallet not found or cashBalance is undefined:",
+              senderId
+            );
             return res.status(400).json({
               event: "INSUFFICIENT_FUNDS",
               message: "Coin cannot be collected right now.",
             });
           }
-        
+  
           const senderBalance = parseFloat(senderWallet.cashBalance);
           const coinAmount = parseFloat(coin.cashAmount);
-        
+  
           if (senderBalance < coinAmount) {
             console.error("[CHECK] Insufficient funds! Transaction blocked.");
             return res.status(400).json({
@@ -727,7 +730,6 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
             message: "Failed to verify sender's balance. Please try again later.",
           });
         }
-        
   
         const walletUpdateQuery = `
           UPDATE wallet
@@ -738,253 +740,256 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
           WHERE userId IN (?, ?)
         `;
   
-        db.run(walletUpdateQuery, [senderId, coin.cashAmount, receiverId, coin.cashAmount, senderId, receiverId], function (err) {
-          if (err) {
-            return res.status(500).json({
-              event: "INTERNAL_SERVER_ERROR",
-              message: "An unexpected error occurred. Please try again later.",
-            });
-          }
-  
-          const userDetailsQuery = `SELECT userId, firstName, lastName FROM users WHERE userId IN (?, ?)`;
-  
-          db.all(userDetailsQuery, [senderId, receiverId], (err, users) => {
+        db.run(
+          walletUpdateQuery,
+          [senderId, coin.cashAmount, receiverId, coin.cashAmount, senderId, receiverId],
+          function (err) {
             if (err) {
               return res.status(500).json({
                 event: "INTERNAL_SERVER_ERROR",
-                message: "An unexpected error occurred while fetching user details.",
+                message: "An unexpected error occurred. Please try again later.",
               });
             }
   
-            let senderDetails = {};
-            let recipientDetails = {};
+            const userDetailsQuery = `SELECT userId, firstName, lastName FROM users WHERE userId IN (?, ?)`;
   
-            users.forEach((user) => {
-              if (user.userId === senderId) {
-                senderDetails = { userId: senderId, firstName: user.firstName, lastName: user.lastName };
+            db.all(userDetailsQuery, [senderId, receiverId], (err, users) => {
+              if (err) {
+                return res.status(500).json({
+                  event: "INTERNAL_SERVER_ERROR",
+                  message: "An unexpected error occurred while fetching user details.",
+                });
               }
-              if (user.userId === receiverId) {
-                recipientDetails = { userId: receiverId, firstName: user.firstName, lastName: user.lastName };
-              }
-            });
   
-            const transactionInsert = (transactionId, interactionType, userDetails, relatedUserDetails) => {
-              console.log("Inserting transaction values are:", JSON.stringify({
-                transactionId,
-                interactionType,
-                userDetails,
-                relatedUserDetails,
-              }, null, 2));
-              
-              return new Promise((resolve, reject) => {
-                const query = `
-                  INSERT INTO transactions (transactionId, interactionType, amount, coinStatus, expirationDate, capturedDate, createDate, user, relatedUser)
-                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                `;
+              let senderDetails = {};
+              let recipientDetails = {};
   
-                db.run(
-                  query,
-                  [
-                    transactionId,
-                    interactionType,
-                    coin.cashAmount,
-                    2, // Coin status for redeemed
-                    coin.expirationDate,
-                    redeemedDate,
-                    new Date().toISOString(),
-                    JSON.stringify(userDetails),
-                    JSON.stringify(relatedUserDetails),
-                  ],
-                  function (err) {
-                    if (err) reject(err);
-                    else resolve();
-                  }
-                );
+              users.forEach((user) => {
+                if (user.userId === senderId) {
+                  senderDetails = {
+                    userId: senderId,
+                    firstName: user.firstName,
+                    lastName: user.lastName,
+                  };
+                }
+                if (user.userId === receiverId) {
+                  recipientDetails = {
+                    userId: receiverId,
+                    firstName: user.firstName,
+                    lastName: user.lastName,
+                  };
+                }
               });
-            };
   
-            const senderTransactionId = Math.floor(Math.random() * 900) + 100;
-            const recipientTransactionId = Math.floor(Math.random() * 900) + 100;
+              const transactionInsert = (transactionId, interactionType, userDetails, relatedUserDetails) => {
+                return new Promise((resolve, reject) => {
+                  const query = `
+                    INSERT INTO transactions (transactionId, interactionType, amount, coinStatus, expirationDate, capturedDate, createDate, user, relatedUser)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                  `;
   
-            Promise.all([
-              transactionInsert(senderTransactionId, 0, senderDetails, recipientDetails), // Sender log
-              transactionInsert(recipientTransactionId, 1, recipientDetails, senderDetails), // Recipient log
-          ])
-              .then(() => {
-                  // Add firstName and lastName to userSender and userRecipient
-                  if (updatedCoin.userSender) {
-                      updatedCoin.userSender.firstName = senderDetails.firstName;
-                      updatedCoin.userSender.lastName = senderDetails.lastName;
+                  db.run(
+                    query,
+                    [
+                      transactionId,
+                      interactionType,
+                      coin.cashAmount,
+                      2, // Coin status for redeemed
+                      coin.expirationDate,
+                      redeemedDate,
+                      new Date().toISOString(),
+                      JSON.stringify(userDetails),
+                      JSON.stringify(relatedUserDetails),
+                    ],
+                    function (err) {
+                      if (err) reject(err);
+                      else resolve();
+                    }
+                  );
+                });
+              };
+  
+              // Generate transaction IDs using UUIDs
+              const senderTransactionId = crypto.randomUUID();
+              const recipientTransactionId = crypto.randomUUID();
+  
+              Promise.allSettled([
+                transactionInsert(senderTransactionId, 0, senderDetails, recipientDetails),
+                transactionInsert(recipientTransactionId, 1, recipientDetails, senderDetails),
+              ]).then((results) => {
+                results.forEach((result, index) => {
+                  if (result.status === "rejected") {
+                    console.error(`Transaction ${index} failed:`, result.reason);
                   }
-          
-                  if (updatedCoin.userRecipient) {
-                      updatedCoin.userRecipient.firstName = recipientDetails.firstName;
-                      updatedCoin.userRecipient.lastName = recipientDetails.lastName;
-                  }
-          
-                  // Remove sender and recipient objects, keep updatedCoin as final response
-                  return res.status(200).json(updatedCoin);
-              })
-              .catch((err) => {
-                  console.error(`[ERROR] Error inserting transactions: ${err.message}`);
+                });
+  
+                if (results.some((r) => r.status === "rejected")) {
                   return res.status(500).json({
-                      event: "INTERNAL_SERVER_ERROR",
-                      message: "Failed to record transactions. Please try again later.",
+                    event: "INTERNAL_SERVER_ERROR",
+                    message: "Failed to record transactions. Please try again later.",
                   });
-              });          
-          });
-        });
+                }
+  
+                if (updatedCoin.userSender) {
+                  updatedCoin.userSender.firstName = senderDetails.firstName;
+                  updatedCoin.userSender.lastName = senderDetails.lastName;
+                }
+  
+                if (updatedCoin.userRecipient) {
+                  updatedCoin.userRecipient.firstName = recipientDetails.firstName;
+                  updatedCoin.userRecipient.lastName = recipientDetails.lastName;
+                }
+  
+                return res.status(200).json(updatedCoin);
+              });
+            });
+          }
+        );
       });
     });
   });
 
+  // drops a new coin for a given user based on their userId or phone number
+  app.post('/DneroArk/coins/Drop', checkAccessToken, async (req, res) => {
+    const { latitude, longitude, message, cashAmount, expirationDate, userRecipientId, userRecipientPhone } = req.body;
 
- 
-  
-   // drops a new coin for a given user based on their userId or phone number
-app.post('/DneroArk/coins/Drop', checkAccessToken, async (req, res) => {
-  const { latitude, longitude, message, cashAmount, expirationDate, userRecipientId, userRecipientPhone } = req.body;
-
-  if (!latitude || !longitude || !cashAmount || !expirationDate) {
-    return res.status(400).json({
-      event: "INVALID_PARAMETERS",
-      message: "One or more required parameters are missing or invalid.",
-    });
-  }
-
-  try {
-    const sender = await new Promise((resolve, reject) => {
-      const senderQuery = `SELECT * FROM users WHERE userId = ?`;
-      db.get(senderQuery, [req.user], (err, row) => {
-        if (err) reject(err);
-        else resolve(row);
-      });
-    });
-
-    if (!sender) {
-      return res.status(404).json({
-        event: "USER_NOT_AUTHORIZED",
-        message: "You do not have permission to drop this coin.",
-      });
-    }
-
-    // Get sender's current balance and pending coins
-    const senderWallet = await new Promise((resolve, reject) => {
-      const walletQuery = `SELECT cashBalance FROM wallet WHERE userId = ?`;
-      db.get(walletQuery, [req.user], (err, row) => {
-        if (err) reject(err);
-        else resolve(row);
-      });
-    });
-
-
-    if (senderWallet < parseFloat(cashAmount)) {
+    if (!latitude || !longitude || !cashAmount || !expirationDate) {
       return res.status(400).json({
-        event: "INSUFFICIENT_BALANCE",
-        message: "Your balance is not sufficient to drop this coin.",
+        event: "INVALID_PARAMETERS",
+        message: "One or more required parameters are missing or invalid.",
       });
     }
 
-    const recipientIds = new Set();
-
-    if (Array.isArray(userRecipientId)) {
-      userRecipientId.forEach((id) => recipientIds.add(id));
-    }
-
-    if (Array.isArray(userRecipientPhone)) {
-      for (const phone of userRecipientPhone) {
-        const user = await new Promise((resolve, reject) => {
-          const userQuery = `SELECT userId FROM users WHERE deviceInfo LIKE ?`;
-          db.get(userQuery, [`%${phone}%`], (err, row) => {
-            if (err) reject(err);
-            else if (row) resolve(row.userId);
-            else resolve(null);
-          });
-        });
-
-        if (user) recipientIds.add(user);
-      }
-    }
-
-    const createdCoins = [];
-    for (const userId of recipientIds) {
-      const user = await new Promise((resolve, reject) => {
-        const userQuery = `SELECT userId, firstName, lastName, imgUrl FROM users WHERE userId = ?`;
-        db.get(userQuery, [userId], (err, row) => {
+    try {
+      const sender = await new Promise((resolve, reject) => {
+        const senderQuery = `SELECT * FROM users WHERE userId = ?`;
+        db.get(senderQuery, [req.user], (err, row) => {
           if (err) reject(err);
           else resolve(row);
         });
       });
 
-      if (user) {
-          const coin = await new Promise((resolve, reject) => {
-            const insertQuery = `
-              INSERT INTO coins (coinId, coinStatus, latitude, longitude, message, cashAmount, creationDate, expirationDate, redeemedDate, userSender, userRecipient)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `;
-            const coinId = Math.floor(Math.random() * 900) + 100;
-            const creationDate = new Date().toISOString();
-            db.run(
-              insertQuery,
-              [
-                coinId,
-                1,
-                latitude,
-                longitude,
-                message,
-                cashAmount,
-                creationDate,
-                expirationDate,
-                null,
-                JSON.stringify({ userId: req.user, userImgUrl: sender.imgUrl }),
-                JSON.stringify({ userId: user.userId, userImgUrl: user.imgUrl, firstName: user.firstName, lastName: user.lastName }),
-              ],
-              function (err) {
-                if (err) reject(err);
-                resolve({
+      if (!sender) {
+        return res.status(404).json({
+          event: "USER_NOT_AUTHORIZED",
+          message: "You do not have permission to drop this coin.",
+        });
+      }
+
+      // Get sender's current balance and pending coins
+      const senderWallet = await new Promise((resolve, reject) => {
+        const walletQuery = `SELECT cashBalance FROM wallet WHERE userId = ?`;
+        db.get(walletQuery, [req.user], (err, row) => {
+          if (err) reject(err);
+          else resolve(row);
+        });
+      });
+
+
+      if (senderWallet < parseFloat(cashAmount)) {
+        return res.status(400).json({
+          event: "INSUFFICIENT_BALANCE",
+          message: "Your balance is not sufficient to drop this coin.",
+        });
+      }
+
+      const recipientIds = new Set();
+
+      if (Array.isArray(userRecipientId)) {
+        userRecipientId.forEach((id) => recipientIds.add(id));
+      }
+
+      if (Array.isArray(userRecipientPhone)) {
+        for (const phone of userRecipientPhone) {
+          const user = await new Promise((resolve, reject) => {
+            const userQuery = `SELECT userId FROM users WHERE deviceInfo LIKE ?`;
+            db.get(userQuery, [`%${phone}%`], (err, row) => {
+              if (err) reject(err);
+              else if (row) resolve(row.userId);
+              else resolve(null);
+            });
+          });
+
+          if (user) recipientIds.add(user);
+        }
+      }
+
+      const createdCoins = [];
+      for (const userId of recipientIds) {
+        const user = await new Promise((resolve, reject) => {
+          const userQuery = `SELECT userId, firstName, lastName, imgUrl FROM users WHERE userId = ?`;
+          db.get(userQuery, [userId], (err, row) => {
+            if (err) reject(err);
+            else resolve(row);
+          });
+        });
+
+        if (user) {
+            const coin = await new Promise((resolve, reject) => {
+              const insertQuery = `
+                INSERT INTO coins (coinId, coinStatus, latitude, longitude, message, cashAmount, creationDate, expirationDate, redeemedDate, userSender, userRecipient)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              `;
+              const coinId = Math.floor(Math.random() * 900) + 100;
+              const creationDate = new Date().toISOString();
+              db.run(
+                insertQuery,
+                [
                   coinId,
-                  coinStatus: 1,
+                  1,
                   latitude,
                   longitude,
                   message,
                   cashAmount,
                   creationDate,
                   expirationDate,
-                  redeemedDate: null,
-                  userSender: { userId: req.user, userImgUrl: sender.imgUrl },
-                  userRecipient: { userId: user.userId, userImgUrl: user.imgUrl, firstName: user.firstName, lastName: user.lastName },
-                });
-              }
-            );
-          });
-          createdCoins.push(coin);
-        
+                  null,
+                  JSON.stringify({ userId: req.user, userImgUrl: sender.imgUrl }),
+                  JSON.stringify({ userId: user.userId, userImgUrl: user.imgUrl, firstName: user.firstName, lastName: user.lastName }),
+                ],
+                function (err) {
+                  if (err) reject(err);
+                  resolve({
+                    coinId,
+                    coinStatus: 1,
+                    latitude,
+                    longitude,
+                    message,
+                    cashAmount,
+                    creationDate,
+                    expirationDate,
+                    redeemedDate: null,
+                    userSender: { userId: req.user, userImgUrl: sender.imgUrl },
+                    userRecipient: { userId: user.userId, userImgUrl: user.imgUrl, firstName: user.firstName, lastName: user.lastName },
+                  });
+                }
+              );
+            });
+            createdCoins.push(coin);
+          
+        }
       }
-    }
 
-    if (createdCoins.length > 0) {
-      return res.status(201).json({
-        event: "THROW_SUCCESS",
-        message: "Coin successfully thrown.",
-        data: createdCoins,
-      });
-    } else {
-      return res.status(400).json({
-        event: "INVALID_PARAMETERS",
-        message: "No valid users found",
+      if (createdCoins.length > 0) {
+        return res.status(201).json({
+          event: "THROW_SUCCESS",
+          message: "Coin successfully thrown.",
+          data: createdCoins,
+        });
+      } else {
+        return res.status(400).json({
+          event: "INVALID_PARAMETERS",
+          message: "No valid users found",
+        });
+      }
+    } catch (err) {
+      console.error("Error:", err);
+      return res.status(500).json({
+        event: "INTERNAL_SERVER_ERROR",
+        message: "An unexpected error occurred. Please try again later.",
       });
     }
-  } catch (err) {
-    console.error("Error:", err);
-    return res.status(500).json({
-      event: "INTERNAL_SERVER_ERROR",
-      message: "An unexpected error occurred. Please try again later.",
-    });
-  }
-});
-
-  
-  
+  });
 
 
 //-----------------------------------User Balance -------------------------/
