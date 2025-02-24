@@ -36,7 +36,7 @@ const createTablesSQL = `
     );
 
     CREATE TABLE IF NOT EXISTS transactions (
-      transactionId INTEGER PRIMARY KEY AUTOINCREMENT,
+      transactionId TEXT PRIMARY KEY,
       interactionType INTEGER,
       amount TEXT,
       coinStatus INTEGER,

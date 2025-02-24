@@ -810,8 +810,8 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
               };
   
               // Generate transaction IDs using UUIDs
-              const senderTransactionId = Math.floor(Math.random() * 900) + 100;
-              const recipientTransactionId = Math.floor(Math.random() * 900) + 100;              
+              const senderTransactionId = crypto.randomUUID();
+              const recipientTransactionId = crypto.randomUUID();
   
               Promise.allSettled([
                 transactionInsert(senderTransactionId, 0, senderDetails, recipientDetails),
