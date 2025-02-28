@@ -619,7 +619,7 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
     });
   });
 
-  //
+  // redeems a coin for a given user based on the coinId
   app.post("/DneroArk/coins/redeem/:coinId", checkAccessToken, async (req, res) => {
     const coinId = parseInt(req.params.coinId, 10);
 
@@ -683,10 +683,7 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
                 });
             });
 
-            console.log("Sender wallet:", senderWallet);
-
             if (!senderWallet || senderWallet.cashBalance === undefined) {
-                console.error("Sender wallet not found or cashBalance is undefined:", senderId);
                 return res.status(400).json({
                     event: "INSUFFICIENT_FUNDS",
                     message: "Coin cannot be collected right now.",
@@ -697,14 +694,12 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
             const coinAmount = parseFloat(coin.cashAmount);
 
             if (senderBalance < coinAmount) {
-                console.error("[CHECK] Insufficient funds! Transaction blocked.");
                 return res.status(400).json({
                     event: "INSUFFICIENT_FUNDS",
                     message: "Coin cannot be collected right now.",
                 });
             }
         } catch (err) {
-            console.error("Error checking sender's balance:", err);
             return res.status(500).json({
                 event: "INTERNAL_SERVER_ERROR",
                 message: "Failed to verify sender's balance. Please try again later.",
@@ -729,6 +724,7 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
 
             const updatedCoin = { ...coin, redeemedDate, coinStatus: 2 };
 
+            // ✅ Step 3: Update wallet balances
             const walletUpdateQuery = `
                 UPDATE wallet
                 SET cashBalance = CASE
@@ -738,23 +734,101 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
                 WHERE userId IN (?, ?)
             `;
 
-            db.run(
-                walletUpdateQuery,
-                [senderId, coin.cashAmount, receiverId, coin.cashAmount, senderId, receiverId],
-                function (err) {
+            db.run(walletUpdateQuery, [senderId, coin.cashAmount, receiverId, coin.cashAmount, senderId, receiverId], function (err) {
+                if (err) {
+                    return res.status(500).json({
+                        event: "INTERNAL_SERVER_ERROR",
+                        message: "An unexpected error occurred. Please try again later.",
+                    });
+                }
+
+                // ✅ Step 4: Retrieve user details for transactions
+                const userDetailsQuery = `SELECT userId, firstName, lastName FROM users WHERE userId IN (?, ?)`;
+
+                db.all(userDetailsQuery, [senderId, receiverId], (err, users) => {
                     if (err) {
                         return res.status(500).json({
                             event: "INTERNAL_SERVER_ERROR",
-                            message: "An unexpected error occurred. Please try again later.",
+                            message: "An unexpected error occurred while fetching user details.",
                         });
                     }
 
-                    return res.status(200).json(updatedCoin);
-                }
-            );
+                    let senderDetails = {};
+                    let recipientDetails = {};
+
+                    users.forEach((user) => {
+                        if (user.userId === senderId) {
+                            senderDetails = { userId: senderId, firstName: user.firstName, lastName: user.lastName };
+                        }
+                        if (user.userId === receiverId) {
+                            recipientDetails = { userId: receiverId, firstName: user.firstName, lastName: user.lastName };
+                        }
+                    });
+
+                    // ✅ Step 5: Save transaction records
+                    const transactionInsert = (transactionId, interactionType, userDetails, relatedUserDetails) => {
+                      return new Promise((resolve, reject) => {
+                          const query = `
+                              INSERT INTO transactions (transactionId, interactionType, amount, coinStatus, expirationDate, capturedDate, createDate, user, relatedUser)
+                              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                          `;
+                  
+                          db.run(
+                              query,
+                              [
+                                  transactionId,
+                                  interactionType,
+                                  coin.cashAmount,
+                                  2, // Coin status for redeemed
+                                  coin.expirationDate,
+                                  redeemedDate,
+                                  new Date().toISOString(),
+                                  JSON.stringify(userDetails),
+                                  JSON.stringify(relatedUserDetails),
+                              ],
+                              function (err) {
+                                  if (err) reject(err);
+                                  else resolve();
+                              }
+                          );
+                      });
+                  };
+                  
+
+                    const senderTransactionId = Math.floor(Math.random() * 900) + 100;
+                    const recipientTransactionId = Math.floor(Math.random() * 900) + 100;
+
+                    Promise.all([
+                        transactionInsert(senderTransactionId, 0, senderDetails, recipientDetails), // Sender log
+                        transactionInsert(recipientTransactionId, 1, recipientDetails, senderDetails), // Recipient log
+                    ])
+                        .then(() => {
+                            // ✅ Step 6: Attach names to response
+                            if (updatedCoin.userSender) {
+                                updatedCoin.userSender.firstName = senderDetails.firstName;
+                                updatedCoin.userSender.lastName = senderDetails.lastName;
+                            }
+
+                            if (updatedCoin.userRecipient) {
+                                updatedCoin.userRecipient.firstName = recipientDetails.firstName;
+                                updatedCoin.userRecipient.lastName = recipientDetails.lastName;
+                            }
+
+                            return res.status(200).json(updatedCoin);
+                        })
+                        .catch((err) => {
+                            console.error(`[ERROR] Error inserting transactions: ${err.message}`);
+                            return res.status(500).json({
+                                event: "INTERNAL_SERVER_ERROR",
+                                message: "Failed to record transactions. Please try again later.",
+                            });
+                        });
+                });
+            });
         });
     });
 });
+
 
 
   // drops a new coin for a given user based on their userId or phone number
