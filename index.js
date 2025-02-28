@@ -794,9 +794,9 @@ app.get('/DneroArk/user/balance/:userId', checkAccessToken, (req, res) => {
                       });
                   };
                   
-
-                    const senderTransactionId = Math.floor(Math.random() * 900) + 100;
-                    const recipientTransactionId = Math.floor(Math.random() * 900) + 100;
+                    // use uuids for transaction ids
+                    const senderTransactionId = crypto.randomUUID();
+                    const recipientTransactionId = crypto.randomUUID();
 
                     Promise.all([
                         transactionInsert(senderTransactionId, 0, senderDetails, recipientDetails), // Sender log
