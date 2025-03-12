@@ -20,6 +20,16 @@ export const users = [
       }
     },
     {
+      userId: "654200b5-4061-4fd3-9b1a-5d8a212ad09c",
+      firstName: 'Juan',
+      lastName: 'Smith',
+      imgUrl: 'https://cdn.pixabay.com/photo/2015/01/22/15/13/businessman-607834_1280.png',
+      deviceInfo: {
+        phone: '5523654321',
+        countryCode: '+52'
+      }
+    },
+    {
         userId: "dd3427fe-4117-4c74-b4ba-57f526236d6d",
         firstName: 'Steven',
         lastName: 'Gutierrez',
