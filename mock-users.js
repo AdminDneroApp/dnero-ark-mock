@@ -21,11 +21,11 @@ export const users = [
     },
     {
       userId: "654200b5-4061-4fd3-9b1a-5d8a212ad09c",
-      firstName: 'Juan',
-      lastName: 'Smith',
-      imgUrl: 'https://cdn.pixabay.com/photo/2015/01/22/15/13/businessman-607834_1280.png',
+      firstName: 'Karla',
+      lastName: 'Fausto',
+      imgUrl: 'https://cdn.pixabay.com/photo/2023/12/03/10/11/woman-8427201_1280.png',
       deviceInfo: {
-        phone: '5523654321',
+        phone: '6145399694',
         countryCode: '+52'
       }
     },
@@ -53,7 +53,7 @@ export const users = [
         userId: "cdcc5a57-6927-4736-99de-b1c78fba0e23",
         firstName: 'Priscilla',
         lastName: 'Chaidez',
-        imgUrl: 'hhttps://cdn.pixabay.com/photo/2023/12/03/10/11/woman-8427201_1280.png',
+        imgUrl: 'https://cdn.pixabay.com/photo/2023/12/03/10/11/woman-8427201_1280.png',
         deviceInfo: {
           phone: '6192591613',
           countryCode: '+1'
