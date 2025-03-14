@@ -25,7 +25,7 @@ export const users = [
       lastName: 'Fausto',
       imgUrl: 'https://cdn.pixabay.com/photo/2023/12/03/10/11/woman-8427201_1280.png',
       deviceInfo: {
-        phone: '6145399694',
+        phone: '6145399649',
         countryCode: '+52'
       }
     },
