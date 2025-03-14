@@ -20,7 +20,7 @@ export const users = [
       }
     },
     {
-      userId: "e25298c9-4e5d-4cab-91f5-89861d1ae0be",
+      userId: "9a03f8ea-3832-456b-b8de-f2a41bd1e3b3",
       firstName: 'Karla',
       lastName: 'Fausto',
       imgUrl: 'https://cdn.pixabay.com/photo/2023/12/03/10/11/woman-8427201_1280.png',
